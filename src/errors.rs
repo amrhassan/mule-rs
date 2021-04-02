@@ -1,5 +1,5 @@
-use thiserror::Error;
 use derive_more::Display;
+use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, MuleError>;
 
