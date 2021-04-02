@@ -1,8 +1,8 @@
-use derive_more::{From, Into};
+use derive_more::{Display, From, Into};
 
 /// A CSV value
-#[derive(Debug, Clone, Hash, PartialEq, Eq, From, Into)]
-pub struct Value(String);
+#[derive(Debug, Clone, Hash, PartialEq, Eq, From, Into, Display)]
+pub struct Value(pub String);
 
 impl<'a> From<UnquotedValue<'a>> for Value {
     fn from(v: UnquotedValue<'a>) -> Self {

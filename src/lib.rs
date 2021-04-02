@@ -3,4 +3,4 @@ mod errors;
 mod parser;
 mod schema_inference;
 
-pub use parser::CsvParser;
+pub use parser::{CsvParser, Value};

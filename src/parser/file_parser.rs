@@ -14,7 +14,7 @@ pub struct CsvParser<'a, R> {
     text_quote_escape: &'a str,
 }
 
-impl<'a, R: Read> CsvParser<'a, R> {
+impl<'a> CsvParser<'a, File> {
     pub fn open_path(
         path: impl AsRef<Path>,
         separator: &'a str,
@@ -23,7 +23,9 @@ impl<'a, R: Read> CsvParser<'a, R> {
     ) -> Result<CsvParser<'a, File>> {
         CsvParser::from_reader(File::open(path)?, separator, text_quote, text_quote_escape)
     }
+}
 
+impl<'a, R: Read> CsvParser<'a, R> {
     pub fn from_reader(
         reader: R,
         separator: &'a str,
