@@ -1,4 +1,4 @@
-use crate::column_types::ColumnType;
+use crate::column_type::ColumnType;
 use std::hash::Hash;
 
 #[derive(Hash)]
