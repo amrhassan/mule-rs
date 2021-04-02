@@ -1,0 +1,13 @@
+[package]
+name = "mule-rs"
+version = "0.0.0"
+authors = ["Amr Hassan <amr.hassan@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+tokio = { version = "1.4.0", features = ["fs", "io-util", "rt", "macros"] }
+thiserror = "1"
+derive_more = "0"
+tokio-stream = {version = "0.1", features = ["io-util"] }
+async-stream = "0.3"
+futures-core = "0.3"
