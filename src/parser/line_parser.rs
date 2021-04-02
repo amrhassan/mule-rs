@@ -1,79 +1,30 @@
-use crate::errors::Result;
-use async_stream::try_stream;
-use futures_core::stream::Stream;
-use std::path::Path;
-use tokio::io::{AsyncRead, BufReader};
-use tokio::{fs::File, io::AsyncBufReadExt};
-use tokio_stream::wrappers::LinesStream;
-use tokio_stream::StreamExt;
-
-pub struct CsvReader<R> {
-    lines: LinesStream<BufReader<R>>,
-}
-
-impl<R: AsyncRead + Unpin> CsvReader<R> {
-    pub fn from_reader(reader: R) -> CsvReader<R> {
-        let buffer = BufReader::new(reader);
-        let lines = LinesStream::new(buffer.lines());
-        CsvReader { lines }
-    }
-
-    pub async fn from_path(path: impl AsRef<Path>) -> Result<CsvReader<File>> {
-        let file = File::open(path).await?;
-        Ok(CsvReader::from_reader(file))
-    }
-
-    pub fn values(
-        mut self,
-        separator: String,
-        text_quote: String,
-        text_quote_escape: String,
-    ) -> impl Stream<Item = Result<String>> {
-        try_stream! {
-            while let Some(line) = self.lines.next().await {
-                for value in LineValues::new(line?, &separator, &text_quote, &text_quote_escape) {
-                    yield value;
-                }
-            }
-        }
-    }
-}
-
-struct Value<'a> {
-    raw: String,
+/// A value parser for a single line implemented as an iterator
+pub struct LineParser<'a> {
+    line: &'a str,
+    separator: &'a str,
     text_quote: &'a str,
-}
-
-fn unquoted_value(raw: String, text_quote: &str, text_quote_escape: &str) -> String {
-    let quote_l = raw.find(text_quote);
-    let quote_r = raw.rfind(text_quote);
-    match (quote_l, quote_r) {
-        (Some(ix_l), Some(ix_r)) if ix_l < ix_r => raw[ix_l + text_quote.len()..ix_r].replace(text_quote_escape, ""),
-        _ => raw,
-    }
-}
-
-struct LineValues {
-    line: String,
-    separator: String,
-    text_quote: String,
-    text_quote_escape: String,
+    text_quote_escape: &'a str,
     next_start: usize,
 }
 
-impl LineValues {
-    fn new(line: String, separator: &str, text_quote: &str, text_quote_escape: &str) -> LineValues {
-        LineValues {
+impl<'a> LineParser<'a> {
+    pub fn new(
+        line: &'a str,
+        separator: &'a str,
+        text_quote: &'a str,
+        text_quote_escape: &'a str,
+    ) -> LineParser<'a> {
+        LineParser {
             line,
-            separator: separator.to_string(),
-            text_quote: text_quote.to_string(),
-            text_quote_escape: text_quote_escape.to_string(),
+            separator,
+            text_quote,
+            text_quote_escape,
             next_start: 0,
         }
     }
 }
 
-impl LineValues {
+impl<'a> LineParser<'a> {
     fn remaining(&self) -> &str {
         self.start_from(self.next_start)
     }
@@ -102,7 +53,7 @@ impl LineValues {
 
     fn parse_unquoted(&self) -> Option<(String, usize)> {
         let end = self.next_separator_ix().unwrap_or(self.line.len());
-        self.parse_to(end)
+        self.parse_to(end).map(|(s, n)| (s.to_string(), n))
     }
 
     fn parse_quoted(&self) -> Option<(String, usize)> {
@@ -115,26 +66,30 @@ impl LineValues {
             None => return self.parse_unquoted(),
         };
 
-        while self.line[quote_r - self.text_quote_escape.len()..quote_r] == self.text_quote_escape {
+        while &self.line[quote_r - self.text_quote_escape.len()..quote_r] == self.text_quote_escape
+        {
             let new_quote_r = match self.subsequent_qoute_ix(quote_r) {
                 Some(ix) => ix,
                 None => return self.parse_unquoted(),
             };
-            quote_r = dbg!(new_quote_r);
+            quote_r = new_quote_r;
         }
 
         let end = quote_r + self.text_quote.len();
-        self.parse_to(end)
+        self.parse_to(end).map(|(raw, n)| {
+            let unquoted = unquoted_value(raw, self.text_quote, self.text_quote_escape);
+            (unquoted, n)
+        })
     }
 
-    fn parse_to(&self, end: usize) -> Option<(String, usize)> {
-        let value = self.line[self.next_start..end].to_string();
+    fn parse_to(&self, end: usize) -> Option<(&str, usize)> {
+        let value = &self.line[self.next_start..end];
         Some((value, end + self.separator.len()))
     }
 }
 
-impl Iterator for LineValues {
-    type Item = String;
+impl<'a> Iterator for LineParser<'a> {
+    type Item = String; // New Strings have to be allocated because escape patterns need to be dropped
     fn next(&mut self) -> Option<Self::Item> {
         if self.next_start > self.line.len() || self.line.is_empty() {
             return None;
@@ -147,14 +102,22 @@ impl Iterator for LineValues {
 
         if let Some((value, next_start)) = parsed {
             self.next_start = next_start;
-            Some(unquoted_value(
-                value,
-                &self.text_quote,
-                &self.text_quote_escape,
-            ))
+            Some(value)
         } else {
             None
         }
+    }
+}
+
+/// Unquote a raw value and drop the quote escaping patterns
+fn unquoted_value(raw: &str, text_quote: &str, text_quote_escape: &str) -> String {
+    let quote_l = raw.find(text_quote);
+    let quote_r = raw.rfind(text_quote);
+    match (quote_l, quote_r) {
+        (Some(ix_l), Some(ix_r)) if ix_l < ix_r => {
+            raw[ix_l + text_quote.len()..ix_r].replace(text_quote_escape, "")
+        }
+        _ => raw.to_string(),
     }
 }
 
@@ -164,8 +127,8 @@ mod tests {
 
     #[test]
     fn test_line_values_1() {
-        let line = "first, second,,three,4,,,".to_string();
-        let values: Vec<String> = LineValues::new(line, ",", "\"", "\\").collect();
+        let line = "first, second,,three,4,,,";
+        let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").collect();
 
         assert_eq!(
             values,
@@ -175,8 +138,8 @@ mod tests {
 
     #[test]
     fn test_line_values_2() {
-        let line = "first, second,,three,4,,,five".to_string();
-        let values: Vec<String> = LineValues::new(line, ",", "\"", "\\").collect();
+        let line = "first, second,,three,4,,,five";
+        let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").collect();
 
         assert_eq!(
             values,
@@ -186,8 +149,8 @@ mod tests {
 
     #[test]
     fn test_line_values_3() {
-        let line = "first,, second,,,,three,,4,,,,,,".to_string();
-        let values: Vec<String> = LineValues::new(line, ",,", "\"", "\\").collect();
+        let line = "first,, second,,,,three,,4,,,,,,";
+        let values: Vec<String> = LineParser::new(line, ",,", "\"", "\\").collect();
 
         assert_eq!(
             values,
@@ -197,8 +160,8 @@ mod tests {
 
     #[test]
     fn test_line_values_4() {
-        let line = "first, second,,three,4,\"\",,five".to_string();
-        let values: Vec<String> = LineValues::new(line, ",", "\"", "\\").collect();
+        let line = "first, second,,three,4,\"\",,five";
+        let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").collect();
 
         assert_eq!(
             values,
@@ -208,8 +171,8 @@ mod tests {
 
     #[test]
     fn test_line_values_5() {
-        let line = "first, \"second point five\",,three,4,\"\",,five".to_string();
-        let values: Vec<String> = LineValues::new(line, ",", "\"", "\\").collect();
+        let line = "first, \"second point five\",,three,4,\"\",,five";
+        let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").collect();
 
         assert_eq!(
             values,
@@ -228,8 +191,8 @@ mod tests {
 
     #[test]
     fn test_line_values_6() {
-        let line = "first, \"second \\\" point five\",,three,4,\"\",,five".to_string();
-        let values: Vec<String> = LineValues::new(line, ",", "\"", "\\").collect();
+        let line = "first, \"second \\\" point five\",,three,4,\"\",,five";
+        let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").collect();
 
         assert_eq!(
             values,
@@ -248,8 +211,8 @@ mod tests {
 
     #[test]
     fn test_line_values_7() {
-        let line = "first, \"second \\\" \\\" point five\",,three,4,\"\",,five".to_string();
-        let values: Vec<String> = LineValues::new(line, ",", "\"", "\\").collect();
+        let line = "first, \"second \\\" \\\" point five\",,three,4,\"\",,five";
+        let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").collect();
 
         assert_eq!(
             values,

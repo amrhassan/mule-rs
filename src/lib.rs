@@ -1,5 +1,5 @@
 mod column_types;
 mod errors;
-mod reader;
+mod parser;
 mod schema_inference;
 mod standard_column_types;
