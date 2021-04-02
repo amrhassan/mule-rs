@@ -1,18 +1,16 @@
 use crate::errors::Result;
 use itertools::Itertools;
-use std::{
-    collections::HashMap,
-    io::{BufRead, BufReader, Read},
-};
+use std::collections::HashMap;
+use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
 
 /// Detects the separator used the most in the given reader from the common separators
-pub fn detect_separator(reader: impl Read) -> Result<String> {
+pub async fn detect_separator(reader: impl AsyncRead + Unpin) -> Result<String> {
     static COMMON_SEPARATORS: [&'static str; 3] = [",", "\t", "|"];
 
     let mut counts: HashMap<&str, usize> = HashMap::default();
 
-    for line_res in BufReader::new(reader).lines() {
-        let line = line_res?;
+    let mut lines = BufReader::new(reader).lines();
+    while let Some(line) = lines.next_line().await? {
         for sep in COMMON_SEPARATORS.iter() {
             *counts.entry(sep).or_default() += line.clone().matches(sep).count();
         }
