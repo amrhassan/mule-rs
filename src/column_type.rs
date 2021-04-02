@@ -1,12 +1,12 @@
-use std::fmt::Display;
-use std::hash::Hash;
+// use std::fmt::Display;
+// use std::hash::Hash;
 
-pub trait ColumnType: Hash + Display {}
+// pub trait ColumnType: Hash + Display {}
 
-pub struct TextColumnType;
+// pub struct TextColumnType;
 
-pub struct IntColumnType;
+// pub struct IntColumnType;
 
-pub struct FloatColumnType;
+// pub struct FloatColumnType;
 
-pub struct RealColumnType;
+// pub struct RealColumnType;

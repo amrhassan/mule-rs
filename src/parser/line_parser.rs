@@ -44,7 +44,7 @@ impl<'a> QuotedValue<'a> {
 
 /// A value parser for a single line implemented as an iterator
 pub struct LineParser<'a> {
-    line: &'a str,
+    line: String,
     separator: &'a str,
     text_quote: &'a str,
     text_quote_escape: &'a str,
@@ -53,7 +53,7 @@ pub struct LineParser<'a> {
 
 impl<'a> LineParser<'a> {
     pub fn new(
-        line: &'a str,
+        line: String,
         separator: &'a str,
         text_quote: &'a str,
         text_quote_escape: &'a str,
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_line_values_1() {
-        let line = "first, second,,three,4,,,";
+        let line = "first, second,,three,4,,,".to_string();
         let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").map_into().collect();
 
         assert_eq!(
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_line_values_2() {
-        let line = "first, second,,three,4,,,five";
+        let line = "first, second,,three,4,,,five".to_string();
         let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").map_into().collect();
 
         assert_eq!(
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_line_values_3() {
-        let line = "first,, second,,,,three,,4,,,,,,";
+        let line = "first,, second,,,,three,,4,,,,,,".to_string();
         let values: Vec<String> = LineParser::new(line, ",,", "\"", "\\").map_into().collect();
 
         assert_eq!(
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_line_values_4() {
-        let line = "first, second,,three,4,\"\",,five";
+        let line = "first, second,,three,4,\"\",,five".to_string();
         let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").map_into().collect();
 
         assert_eq!(
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_line_values_5() {
-        let line = "first, \"second point five\",,three,4,\"\",,five";
+        let line = "first, \"second point five\",,three,4,\"\",,five".to_string();
         let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").map_into().collect();
 
         assert_eq!(
@@ -216,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_line_values_6() {
-        let line = "first, \"second \\\" point five\",,three,4,\"\",,five";
+        let line = "first, \"second \\\" point five\",,three,4,\"\",,five".to_string();
         let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").map_into().collect();
 
         assert_eq!(
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_line_values_7() {
-        let line = "first, \"second \\\" \\\" point five\",,three,4,\"\",,five";
+        let line = "first, \"second \\\" \\\" point five\",,three,4,\"\",,five".to_string();
         let values: Vec<String> = LineParser::new(line, ",", "\"", "\\").map_into().collect();
 
         assert_eq!(
