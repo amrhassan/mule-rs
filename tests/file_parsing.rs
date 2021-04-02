@@ -1,11 +1,18 @@
 use itertools::Itertools;
-use mule_rs::{CsvParser, Value};
+use mule_rs::{CsvParser, Result, Value};
 
-#[test]
-pub fn test_parsing_sales_10_weird() {
-    let parser = CsvParser::open_path("datasets/sales-10-weird.csv", ",", "\"", "\\").unwrap();
+#[tokio::test]
+pub async fn test_parsing_sales_10_weird() -> Result<()> {
+    let mut parser = CsvParser::open_path("datasets/sales-10-weird.csv", ",", "\"", "\\").await?;
+    let dataset = {
+        let mut d = vec![];
+        while let Some(line) = parser.next_line().await? {
+            d.push(line.collect_vec());
+        }
+        d
+    };
 
-    let dataset = vec![
+    let expected_dataset = vec![
         vec![
             Value("Region".to_string()),
             Value("Country".to_string()),
@@ -168,10 +175,6 @@ pub fn test_parsing_sales_10_weird() {
         ],
     ];
 
-    assert_eq!(
-        parser
-            .map(|values| values.unwrap().collect_vec())
-            .collect_vec(),
-        dataset
-    )
+    assert_eq!(dataset, expected_dataset);
+    Ok(())
 }

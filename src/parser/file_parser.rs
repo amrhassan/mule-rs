@@ -1,10 +1,8 @@
 use super::line_parser::LineParser;
 use crate::errors::Result;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader, Lines, Read},
-    path::Path,
-};
+use std::path::Path;
+use tokio::fs::File;
+use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader, Lines};
 
 /// Parser of CSV byte streams
 pub struct CsvParser<'a, R> {
@@ -15,18 +13,25 @@ pub struct CsvParser<'a, R> {
 }
 
 impl<'a> CsvParser<'a, File> {
-    pub fn open_path(
+    pub async fn open_path(
         path: impl AsRef<Path>,
         separator: &'a str,
         text_quote: &'a str,
         text_quote_escape: &'a str,
     ) -> Result<CsvParser<'a, File>> {
-        CsvParser::from_reader(File::open(path)?, separator, text_quote, text_quote_escape)
+        let parser = CsvParser::from_reader(
+            File::open(path).await?,
+            separator,
+            text_quote,
+            text_quote_escape,
+        )
+        .await?;
+        Ok(parser)
     }
 }
 
-impl<'a, R: Read> CsvParser<'a, R> {
-    pub fn from_reader(
+impl<'a, R: AsyncRead + Unpin> CsvParser<'a, R> {
+    pub async fn from_reader(
         reader: R,
         separator: &'a str,
         text_quote: &'a str,
@@ -40,20 +45,16 @@ impl<'a, R: Read> CsvParser<'a, R> {
             text_quote_escape,
         })
     }
-}
 
-impl<'a, R: Read> Iterator for CsvParser<'a, R> {
-    type Item = Result<LineParser<'a>>;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.lines.next() {
-            Some(Ok(line)) => Some(Ok(LineParser::new(
+    pub async fn next_line(&mut self) -> Result<Option<LineParser<'a>>> {
+        let parser = self.lines.next_line().await?.map(|line| {
+            LineParser::new(
                 line,
                 self.separator,
                 self.text_quote,
                 self.text_quote_escape,
-            ))),
-            Some(Err(err)) => Some(Err(err.into())),
-            None => None,
-        }
+            )
+        });
+        Ok(parser)
     }
 }
