@@ -2,16 +2,22 @@ use derive_more::{Display, From, Into};
 
 /// A CSV value
 #[derive(Debug, Clone, Hash, PartialEq, Eq, From, Into, Display)]
-pub struct Value(pub String);
+pub struct RawValue(pub String);
 
-impl<'a> From<UnquotedValue<'a>> for Value {
-    fn from(v: UnquotedValue<'a>) -> Self {
-        Value(v.0.to_string())
+impl From<&str> for RawValue {
+    fn from(s: &str) -> Self {
+        s.to_string().into()
     }
 }
 
-impl<'a> From<QuotedValue<'a>> for Value {
-    fn from(v: QuotedValue<'a>) -> Value {
+impl<'a> From<UnquotedRawValue<'a>> for RawValue {
+    fn from(v: UnquotedRawValue<'a>) -> Self {
+        RawValue(v.0.to_string())
+    }
+}
+
+impl<'a> From<QuotedRawValue<'a>> for RawValue {
+    fn from(v: QuotedRawValue<'a>) -> RawValue {
         let quote_l = v.raw.find(v.quote);
         let quote_r = v.raw.rfind(v.quote);
         match (quote_l, quote_r) {
@@ -24,17 +30,17 @@ impl<'a> From<QuotedValue<'a>> for Value {
 }
 
 #[derive(From)]
-pub struct UnquotedValue<'a>(&'a str);
+struct UnquotedRawValue<'a>(&'a str);
 
-pub struct QuotedValue<'a> {
+struct QuotedRawValue<'a> {
     raw: &'a str,
     quote: &'a str,
     quote_escape: &'a str,
 }
 
-impl<'a> QuotedValue<'a> {
-    fn new(raw: &'a str, quote: &'a str, quote_escape: &'a str) -> QuotedValue<'a> {
-        QuotedValue {
+impl<'a> QuotedRawValue<'a> {
+    fn new(raw: &'a str, quote: &'a str, quote_escape: &'a str) -> QuotedRawValue<'a> {
+        QuotedRawValue {
             raw,
             quote,
             quote_escape,
@@ -95,13 +101,13 @@ impl<'a> LineParser<'a> {
             .map(|ix| ix + first_quote_ix + self.text_quote.len())
     }
 
-    fn parse_unquoted(&self) -> (UnquotedValue, usize) {
+    fn parse_unquoted(&self) -> (UnquotedRawValue, usize) {
         let end = self.next_separator_ix().unwrap_or(self.line.len());
         let (raw, n) = self.parse_to(end);
         (raw.into(), n)
     }
 
-    fn parse_quoted(&self) -> Result<(QuotedValue, usize), ()> {
+    fn parse_quoted(&self) -> Result<(QuotedRawValue, usize), ()> {
         let quote_l = self.next_quote_ix().ok_or(())?;
         let mut quote_r = self.subsequent_qoute_ix(quote_l).ok_or(())?;
 
@@ -112,7 +118,7 @@ impl<'a> LineParser<'a> {
 
         let end = quote_r + self.text_quote.len();
         let (raw, n) = self.parse_to(end);
-        let quoted = QuotedValue::new(raw, self.text_quote, self.text_quote_escape);
+        let quoted = QuotedRawValue::new(raw, self.text_quote, self.text_quote_escape);
         Ok((quoted, n))
     }
 
@@ -123,7 +129,7 @@ impl<'a> LineParser<'a> {
 }
 
 impl<'a> Iterator for LineParser<'a> {
-    type Item = Value; // New Strings have to be allocated because escape patterns need to be dropped
+    type Item = RawValue; // New Strings have to be allocated because escape patterns need to be dropped
     fn next(&mut self) -> Option<Self::Item> {
         if self.next_start > self.line.len() || self.line.is_empty() {
             return None;
