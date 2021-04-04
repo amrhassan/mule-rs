@@ -1,8 +1,11 @@
 [package]
 name = "mule"
+description = "Strong-headed (yet flexible) CSV/TSV dataset parser"
 version = "0.0.0"
 authors = ["Amr Hassan <amr.hassan@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/amrhassan/mule-rs"
+license = "MIT"
 
 [dependencies]
 tokio = { version = "1.4.0", features = ["fs", "io-util", "rt-multi-thread", "macros"] }
