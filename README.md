@@ -1,6 +1,10 @@
 # mule #
 Strong-headed (yet flexible) parser of columnar datasets from CSV, TSV or other delimiter-separated datasets
 
+[![Crates.io](https://img.shields.io/crates/v/mule)](https://crates.io/crates/mule)
+[![Documentation](https://docs.rs/mule/badge.svg)](https://docs.rs/mule)
+[![Crates.io](https://img.shields.io/crates/l/mule)](LICENSE)
+
 # Usage #
 Add the dependency to `Cargo.toml`:
 ```toml
