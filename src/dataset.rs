@@ -1,8 +1,8 @@
-use super::default_typer::DefaultTyper;
-use super::errors::Result;
-use super::raw_parser::LineParser;
-use super::schema_inference::{count_lines, infer_column_types, read_column_names};
-use super::typer::{ColumnValue, Typer};
+use crate::default_typer::DefaultTyper;
+use crate::errors::Result;
+use crate::raw_parser::LineParser;
+use crate::schema_inference::{count_lines, infer_column_types, read_column_names};
+use crate::typer::{ColumnValue, Typer};
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -10,7 +10,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 pub struct Dataset<T: Typer> {
     pub column_names: Option<Vec<String>>,
     pub column_types: Vec<T::TypeTag>,
-    pub data: Vec<Vec<ColumnValue<T::TypedValue>>>,
+    pub data: Vec<Vec<ColumnValue<T::Output>>>,
 }
 
 impl<T: Typer> Dataset<T> {
@@ -42,11 +42,11 @@ impl<T: Typer> Dataset<T> {
             &options.separator,
             &options.text_quote,
             &options.text_quote_escape,
-            T::new(),
+            T::default(),
         )
         .await?;
 
-        let mut data: Vec<Vec<ColumnValue<T::TypedValue>>> = vec![vec![]; column_types.len()];
+        let mut data: Vec<Vec<ColumnValue<T::Output>>> = vec![vec![]; column_types.len()];
         let mut lines = BufReader::new(File::open(file_path).await?).lines();
 
         if skip_first_row {
@@ -61,7 +61,7 @@ impl<T: Typer> Dataset<T> {
                 &options.text_quote_escape,
             );
             for (col_ix, (value, column_type)) in line_values.zip(column_types.iter()).enumerate() {
-                let column_value = options.typer.type_raw_value_as(&value, *column_type);
+                let column_value = options.typer.type_value_as(&value, *column_type);
                 data[col_ix].push(column_value);
             }
         }
@@ -95,7 +95,7 @@ impl Default for ReadingOptions<DefaultTyper> {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
-            typer: DefaultTyper::new(),
+            typer: DefaultTyper::default(),
         }
     }
 }

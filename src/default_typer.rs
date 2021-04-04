@@ -1,35 +1,50 @@
-use crate::typer::ColumnValue;
-
 use super::raw_parser::RawValue;
 use super::typer::Typer;
-use super::values::{Value, ValueType};
+use crate::typer::{ColumnValue, TypedValue};
+use crate::typing_helpers;
+use derive_more::Display;
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum Value {
+    Boolean(bool),
+    Int(i64),
+    Float(f64),
+    Text(String),
+}
+
+impl TypedValue<ValueType> for Value {
+    fn tag(&self) -> ValueType {
+        match self {
+            Value::Boolean(_) => ValueType::Boolean,
+            Value::Int(_) => ValueType::Int,
+            Value::Float(_) => ValueType::Float,
+            Value::Text(_) => ValueType::Text,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
+pub enum ValueType {
+    Boolean,
+    Int,
+    Float,
+    Text,
+}
 
 #[derive(Default)]
 pub struct DefaultTyper;
 
 impl DefaultTyper {
     fn as_int(&self, value: &RawValue) -> Option<Value> {
-        Some(Value::Int(value.0.trim().parse().ok()?))
+        typing_helpers::parse_int(&value.0).map(Value::Int)
     }
 
     fn as_float(&self, value: &RawValue) -> Option<Value> {
-        let s = value.0.trim().to_lowercase();
-        if s == "nan" {
-            Some(Value::Float(f64::NAN))
-        } else {
-            Some(Value::Float(s.parse().ok()?))
-        }
+        typing_helpers::parse_float(&value.0).map(Value::Float)
     }
 
     fn as_bool(&self, value: &RawValue) -> Option<Value> {
-        let s = value.0.trim().to_lowercase();
-        if s == "1" || s == "t" {
-            Some(Value::Boolean(true))
-        } else if s == "0" || s == "f" {
-            Some(Value::Boolean(false))
-        } else {
-            Some(Value::Boolean(s.parse().ok()?))
-        }
+        typing_helpers::parse_bool(&value.0).map(Value::Boolean)
     }
 
     fn as_text(&self, value: &RawValue) -> Value {
@@ -37,15 +52,15 @@ impl DefaultTyper {
     }
 
     fn is_missing(&self, value: &RawValue) -> bool {
-        value.0.trim().is_empty()
+        typing_helpers::is_missing(&value.0)
     }
 }
 
 impl Typer for DefaultTyper {
-    type TypedValue = Value;
     type TypeTag = ValueType;
+    type Output = Value;
 
-    fn type_raw_value(&self, value: &RawValue) -> Option<Self::TypedValue> {
+    fn type_value(&self, value: &RawValue) -> Option<Self::Output> {
         if self.is_missing(value) {
             None
         } else {
@@ -58,19 +73,7 @@ impl Typer for DefaultTyper {
         }
     }
 
-    fn tag_typed_value(&self, typed_value: &Self::TypedValue) -> Self::TypeTag {
-        typed_value.value_type()
-    }
-
-    fn new() -> DefaultTyper {
-        DefaultTyper::default()
-    }
-
-    fn type_raw_value_as(
-        &self,
-        value: &RawValue,
-        tag: Self::TypeTag,
-    ) -> ColumnValue<Self::TypedValue> {
+    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::Output> {
         if self.is_missing(value) {
             ColumnValue::Missing
         } else {
@@ -108,7 +111,7 @@ mod tests {
         ];
         for (raw, expected) in values {
             assert_eq!(
-                DefaultTyper.type_raw_value(&raw.into()),
+                DefaultTyper.type_value(&raw.into()),
                 Some(Value::Boolean(expected)),
                 "{} failed the test",
                 raw
@@ -121,7 +124,7 @@ mod tests {
         let values = vec![("4", 4), ("8", 8), ("-15", -15), ("23", 23), ("  42", 42)];
         for (raw, expected) in values {
             assert_eq!(
-                DefaultTyper.type_raw_value(&raw.into()),
+                DefaultTyper.type_value(&raw.into()),
                 Some(Value::Int(expected)),
                 "{} failed the test",
                 raw
@@ -145,7 +148,7 @@ mod tests {
             ("-INF", f64::NEG_INFINITY),
         ];
         for (raw, expected) in values {
-            let determined = DefaultTyper.type_raw_value(&raw.into());
+            let determined = DefaultTyper.type_value(&raw.into());
             let is_equal = if let Some(Value::Float(parsed)) = determined {
                 parsed.is_nan() && expected.is_nan()
                     || parsed.partial_cmp(&expected) == Some(Ordering::Equal)

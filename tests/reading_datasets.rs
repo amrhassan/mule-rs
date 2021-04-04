@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use mule::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result, ValueType};
+use mule::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result, TypedValue, ValueType};
 
 #[tokio::test]
 pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
@@ -61,7 +61,7 @@ pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
             .flat_map(|v| match v {
                 ColumnValue::Invalid => vec![].into_iter(),
                 ColumnValue::Missing => vec![].into_iter(),
-                ColumnValue::Some(x) => vec![x.value_type()].into_iter(),
+                ColumnValue::Some(x) => vec![x.tag()].into_iter(),
             })
             .collect_vec();
         assert!(
