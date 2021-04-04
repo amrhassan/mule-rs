@@ -6,6 +6,11 @@ authors = ["Amr Hassan <amr.hassan@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/amrhassan/mule-rs"
 license = "MIT"
+categories = ["parser", "dataset", "asynchronous"]
+keywords = ["csv", "tsv", "dataset", "columnar"]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 tokio = { version = "1.4.0", features = ["fs", "io-util", "rt-multi-thread", "macros"] }
