@@ -6,6 +6,7 @@ mod schema_inference;
 mod typer;
 mod values;
 
+pub use dataset::{Dataset, TypedDataset};
 pub use default_typer::DefaultTyper;
 pub use errors::Result;
 pub use raw_parser::{CsvParser, RawValue};
