@@ -1,7 +1,7 @@
 [package]
 name = "mule"
 description = "Strong-headed (yet flexible) CSV/TSV dataset parser"
-version = "0.0.0"
+version = "0.0.1-alpha.0"
 authors = ["Amr Hassan <amr.hassan@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/amrhassan/mule-rs"
