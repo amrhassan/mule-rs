@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use mule_rs::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result, ValueType};
+use mule::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result, ValueType};
 
 #[tokio::test]
 pub async fn test_dataset_read_sales_10_weird() -> Result<()> {

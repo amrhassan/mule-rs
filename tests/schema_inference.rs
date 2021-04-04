@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use mule_rs::{
+use mule::{
     infer_column_types, infer_separator, read_column_names, DefaultTyper, Result, ValueType,
 };
 use tokio::fs::File;

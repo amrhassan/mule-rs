@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use mule_rs::{CsvParser, RawValue, Result};
+use mule::{CsvParser, RawValue, Result};
 
 #[tokio::test]
 pub async fn test_parsing_sales_10_weird() -> Result<()> {

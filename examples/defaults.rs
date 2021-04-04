@@ -1,4 +1,4 @@
-use mule_rs::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result};
+use mule::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
