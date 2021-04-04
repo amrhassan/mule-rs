@@ -14,7 +14,7 @@ pub struct Dataset<T: Typer> {
 }
 
 impl<T: Typer> Dataset<T> {
-    pub async fn read(
+    pub async fn read_file(
         file_path: impl AsRef<Path> + Clone,
         options: ReadingOptions<T>,
     ) -> Result<Dataset<T>> {

@@ -4,7 +4,7 @@ use mule_rs::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result, ValueTyp
 #[tokio::test]
 pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
     let options = DefaultTypedReadingOptions::default();
-    let dataset = Dataset::read("datasets/sales-10-weird.csv", options).await?;
+    let dataset = Dataset::read_file("datasets/sales-10-weird.csv", options).await?;
 
     let column_types = dataset.column_types;
     let column_names = dataset.column_names;

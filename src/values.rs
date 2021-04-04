@@ -1,3 +1,5 @@
+use derive_more::Display;
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum Value {
     Boolean(bool),
@@ -17,7 +19,7 @@ impl Value {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
 pub enum ValueType {
     Boolean,
     Int,
