@@ -6,7 +6,7 @@ mod schema_inference;
 mod typer;
 mod typing_helpers;
 
-pub use dataset::{Dataset, DefaultTypedReadingOptions, ReadingOptions, TypedDataset};
+pub use dataset::{read_file, Dataset, DefaultTypedReadingOptions, ReadingOptions, TypedDataset};
 pub use default_typer::{DefaultTyper, Value, ValueType};
 pub use errors::Result;
 pub use raw_parser::{CsvParser, RawValue};

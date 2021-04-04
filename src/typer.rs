@@ -1,4 +1,5 @@
 use super::raw_parser::RawValue;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -11,7 +12,7 @@ pub enum ColumnValue<A> {
 /// Infer the type of a raw value
 pub trait Typer: Default {
     /// Uniquely-identifying tag type for typed values
-    type TypeTag: Hash + Eq + Copy;
+    type TypeTag: Display + Hash + Eq + Copy;
 
     /// The type of a fully-typed single value
     type Output: TypedValue<Self::TypeTag>;
@@ -28,7 +29,7 @@ pub trait Typer: Default {
 }
 
 /// A value of a concrete type
-pub trait TypedValue<T>: Clone {
+pub trait TypedValue<T>: Clone + Debug {
     /// Determine a tag value that identifies the type of the value
     fn tag(&self) -> T;
 }

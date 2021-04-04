@@ -31,7 +31,7 @@ pub enum ValueType {
     Text,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DefaultTyper;
 
 impl DefaultTyper {
