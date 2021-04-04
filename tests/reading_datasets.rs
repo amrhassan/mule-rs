@@ -1,10 +1,11 @@
 use itertools::Itertools;
-use mule::{ColumnValue, Dataset, DefaultTypedReadingOptions, Result, TypedValue, ValueType};
+use mule::{ColumnValue, Dataset, DefaultTyper, ReadingOptions, Result, TypedValue, ValueType};
 
 #[tokio::test]
 pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
-    let options = DefaultTypedReadingOptions::default();
-    let dataset = Dataset::read_file("datasets/sales-10-weird.csv", options).await?;
+    let options = ReadingOptions::default();
+    let typer = DefaultTyper::default();
+    let dataset = Dataset::read_file("datasets/sales-10-weird.csv", options, &typer).await?;
 
     let column_types = dataset.column_types;
     let column_names = dataset.column_names;

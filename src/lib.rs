@@ -2,13 +2,12 @@ mod dataset;
 mod default_typer;
 mod errors;
 mod raw_parser;
-mod schema_inference;
+pub mod schema_inference;
 mod typer;
-mod typing_helpers;
 
-pub use dataset::{read_file, Dataset, DefaultTypedReadingOptions, ReadingOptions, TypedDataset};
+pub use dataset::{read_file, Dataset, ReadingOptions, Separator, TypedDataset};
 pub use default_typer::{DefaultTyper, Value, ValueType};
 pub use errors::Result;
-pub use raw_parser::{CsvParser, RawValue};
+pub use raw_parser::{ColumnValue, CsvParser, RawValue, ValueParser};
 pub use schema_inference::{infer_column_types, infer_separator, read_column_names};
-pub use typer::{ColumnValue, TypedValue, Typer};
+pub use typer::{TypedValue, Typer};

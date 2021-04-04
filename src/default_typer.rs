@@ -1,7 +1,5 @@
-use super::raw_parser::RawValue;
-use super::typer::Typer;
-use crate::typer::{ColumnValue, TypedValue};
-use crate::typing_helpers;
+use crate::raw_parser::{ColumnValue, RawValue, ValueParser};
+use crate::typer::{TypedValue, Typer};
 use derive_more::Display;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -35,24 +33,20 @@ pub enum ValueType {
 pub struct DefaultTyper;
 
 impl DefaultTyper {
-    fn as_int(&self, value: &RawValue) -> Option<Value> {
-        typing_helpers::parse_int(&value.0).map(Value::Int)
+    fn as_int(&self, value: &RawValue) -> ColumnValue<Value> {
+        value.parse_csv().map(Value::Int)
     }
 
-    fn as_float(&self, value: &RawValue) -> Option<Value> {
-        typing_helpers::parse_float(&value.0).map(Value::Float)
+    fn as_float(&self, value: &RawValue) -> ColumnValue<Value> {
+        value.parse_csv().map(Value::Float)
     }
 
-    fn as_bool(&self, value: &RawValue) -> Option<Value> {
-        typing_helpers::parse_bool(&value.0).map(Value::Boolean)
+    fn as_bool(&self, value: &RawValue) -> ColumnValue<Value> {
+        value.parse_csv().map(Value::Boolean)
     }
 
     fn as_text(&self, value: &RawValue) -> Value {
-        Value::Text(value.0.clone())
-    }
-
-    fn is_missing(&self, value: &RawValue) -> bool {
-        typing_helpers::is_missing(&value.0)
+        Value::Text(value.0.to_string())
     }
 }
 
@@ -60,30 +54,19 @@ impl Typer for DefaultTyper {
     type TypeTag = ValueType;
     type Output = Value;
 
-    fn type_value(&self, value: &RawValue) -> Option<Self::Output> {
-        if self.is_missing(value) {
-            None
-        } else {
-            let typed = self
-                .as_bool(value)
-                .or_else(|| self.as_int(value))
-                .or_else(|| self.as_float(value))
-                .unwrap_or_else(|| self.as_text(value));
-            Some(typed)
-        }
+    fn type_value(&self, value: &RawValue) -> Self::Output {
+        self.as_bool(value)
+            .or_else(|| self.as_int(value))
+            .or_else(|| self.as_float(value))
+            .unwrap_or_else(|| self.as_text(value))
     }
 
     fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::Output> {
-        if self.is_missing(value) {
-            ColumnValue::Missing
-        } else {
-            let opt = match tag {
-                ValueType::Boolean => self.as_bool(value),
-                ValueType::Int => self.as_int(value),
-                ValueType::Float => self.as_float(value),
-                ValueType::Text => Some(self.as_text(value)),
-            };
-            opt.map(ColumnValue::Some).unwrap_or(ColumnValue::Invalid)
+        match tag {
+            ValueType::Boolean => self.as_bool(value),
+            ValueType::Int => self.as_int(value),
+            ValueType::Float => self.as_float(value),
+            ValueType::Text => ColumnValue::Some(self.as_text(value)),
         }
     }
 }
@@ -112,7 +95,7 @@ mod tests {
         for (raw, expected) in values {
             assert_eq!(
                 DefaultTyper.type_value(&raw.into()),
-                Some(Value::Boolean(expected)),
+                Value::Boolean(expected),
                 "{} failed the test",
                 raw
             );
@@ -125,7 +108,7 @@ mod tests {
         for (raw, expected) in values {
             assert_eq!(
                 DefaultTyper.type_value(&raw.into()),
-                Some(Value::Int(expected)),
+                Value::Int(expected),
                 "{} failed the test",
                 raw
             );
@@ -149,7 +132,7 @@ mod tests {
         ];
         for (raw, expected) in values {
             let determined = DefaultTyper.type_value(&raw.into());
-            let is_equal = if let Some(Value::Float(parsed)) = determined {
+            let is_equal = if let Value::Float(parsed) = determined {
                 parsed.is_nan() && expected.is_nan()
                     || parsed.partial_cmp(&expected) == Some(Ordering::Equal)
             } else {

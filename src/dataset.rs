@@ -1,7 +1,7 @@
 use crate::errors::Result;
-use crate::raw_parser::LineParser;
+use crate::raw_parser::{ColumnValue, LineParser};
 use crate::schema_inference::{count_lines, infer_column_types, read_column_names};
-use crate::typer::{ColumnValue, Typer};
+use crate::typer::Typer;
 use crate::{default_typer::DefaultTyper, infer_separator};
 use std::path::Path;
 use tokio::fs::File;
@@ -16,14 +16,17 @@ pub struct Dataset<T: Typer> {
 }
 
 pub async fn read_file(file_path: impl AsRef<Path> + Clone) -> Result<Dataset<DefaultTyper>> {
-    let ds = Dataset::read_file(file_path, DefaultTypedReadingOptions::default()).await?;
+    let typer = DefaultTyper::default();
+    let options = ReadingOptions::default();
+    let ds = Dataset::read_file(file_path, options, &typer).await?;
     Ok(ds)
 }
 
 impl<T: Typer> Dataset<T> {
     pub async fn read_file(
         file_path: impl AsRef<Path> + Clone,
-        options: ReadingOptions<T>,
+        options: ReadingOptions,
+        typer: &T,
     ) -> Result<Dataset<T>> {
         let line_count = count_lines(File::open(file_path.clone()).await?).await?;
         let schema_inference_depth =
@@ -70,7 +73,7 @@ impl<T: Typer> Dataset<T> {
             &separator,
             &options.text_quote,
             &options.text_quote_escape,
-            &options.typer,
+            typer,
         )
         .await?;
 
@@ -92,17 +95,16 @@ pub enum Separator {
 }
 
 #[derive(Clone, Debug)]
-pub struct ReadingOptions<T> {
+pub struct ReadingOptions {
     pub read_header: bool,
     /// A value between 0.0 and 1.0 indicating the percentage of rows to read for schema inference
     pub schema_inference_percentage: f64,
     pub separator: Separator,
     pub text_quote: String,
     pub text_quote_escape: String,
-    pub typer: T,
 }
 
-impl Default for ReadingOptions<DefaultTyper> {
+impl Default for ReadingOptions {
     fn default() -> Self {
         ReadingOptions {
             read_header: true,
@@ -110,12 +112,9 @@ impl Default for ReadingOptions<DefaultTyper> {
             separator: Separator::Infer,
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
-            typer: DefaultTyper::default(),
         }
     }
 }
-
-pub type DefaultTypedReadingOptions = ReadingOptions<DefaultTyper>;
 
 async fn read_data<T: Typer>(
     file_path: impl AsRef<Path>,
