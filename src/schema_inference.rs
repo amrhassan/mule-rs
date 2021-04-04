@@ -47,9 +47,19 @@ pub async fn read_column_names(
     Ok(names)
 }
 
+pub async fn count_lines(reader: impl AsyncRead + Unpin) -> Result<usize> {
+    let mut count = 0;
+    let mut lines = BufReader::new(reader).lines();
+    while let Some(_) = lines.next_line().await? {
+        count += 1;
+    }
+    Ok(count)
+}
+
 pub async fn infer_column_types<T: Typer>(
     reader: impl AsyncRead + Unpin,
     skip_first_row: bool,
+    inference_depth: usize,
     separator: &str,
     text_quote: &str,
     text_quote_escape: &str,
@@ -63,7 +73,12 @@ pub async fn infer_column_types<T: Typer>(
 
     let mut column_freqs: Vec<HashMap<T::TypeTag, usize>> = Vec::new();
 
+    let mut count = 0;
     while let Some(line) = lines.next_line().await? {
+        if count > inference_depth {
+            break;
+        }
+        count += 1;
         let line_values = LineParser::new(line, separator, text_quote, text_quote_escape);
         for (ix, val) in line_values.enumerate() {
             if let Some(typed_value) = typer.type_raw_value(&val) {

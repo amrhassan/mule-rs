@@ -20,7 +20,7 @@ pub async fn test_infer_column_types_sales_100() -> Result<()> {
     let csv_file = File::open("datasets/sales-100.csv").await?;
 
     let typer = DefaultTyper::default();
-    let column_types = infer_column_types(csv_file, true, ",", "\"", "\\", typer).await?;
+    let column_types = infer_column_types(csv_file, true, 200, ",", "\"", "\\", typer).await?;
 
     let expected = vec![
         ValueType::Text,
