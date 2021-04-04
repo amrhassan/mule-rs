@@ -1,3 +1,5 @@
+use crate::typer::ColumnValue;
+
 use super::raw_parser::RawValue;
 use super::typer::Typer;
 use super::values::{Value, ValueType};
@@ -33,21 +35,53 @@ impl DefaultTyper {
     fn as_text(&self, value: &RawValue) -> Value {
         Value::Text(value.0.clone())
     }
+
+    fn is_missing(&self, value: &RawValue) -> bool {
+        value.0.trim().is_empty()
+    }
 }
 
 impl Typer for DefaultTyper {
     type TypedValue = Value;
     type TypeTag = ValueType;
 
-    fn type_raw_value(&self, value: &RawValue) -> Self::TypedValue {
-        self.as_bool(value)
-            .or_else(|| self.as_int(value))
-            .or_else(|| self.as_float(value))
-            .unwrap_or_else(|| self.as_text(value))
+    fn type_raw_value(&self, value: &RawValue) -> Option<Self::TypedValue> {
+        if self.is_missing(value) {
+            None
+        } else {
+            let typed = self
+                .as_bool(value)
+                .or_else(|| self.as_int(value))
+                .or_else(|| self.as_float(value))
+                .unwrap_or_else(|| self.as_text(value));
+            Some(typed)
+        }
     }
 
     fn tag_typed_value(&self, typed_value: &Self::TypedValue) -> Self::TypeTag {
         typed_value.value_type()
+    }
+
+    fn new() -> DefaultTyper {
+        DefaultTyper::default()
+    }
+
+    fn type_raw_value_as(
+        &self,
+        value: &RawValue,
+        tag: Self::TypeTag,
+    ) -> ColumnValue<Self::TypedValue> {
+        if self.is_missing(value) {
+            ColumnValue::Missing
+        } else {
+            let opt = match tag {
+                ValueType::Boolean => self.as_bool(value),
+                ValueType::Int => self.as_int(value),
+                ValueType::Float => self.as_float(value),
+                ValueType::Text => Some(self.as_text(value)),
+            };
+            opt.map(ColumnValue::Some).unwrap_or(ColumnValue::Invalid)
+        }
     }
 }
 
@@ -75,7 +109,7 @@ mod tests {
         for (raw, expected) in values {
             assert_eq!(
                 DefaultTyper.type_raw_value(&raw.into()),
-                Value::Boolean(expected),
+                Some(Value::Boolean(expected)),
                 "{} failed the test",
                 raw
             );
@@ -88,7 +122,7 @@ mod tests {
         for (raw, expected) in values {
             assert_eq!(
                 DefaultTyper.type_raw_value(&raw.into()),
-                Value::Int(expected),
+                Some(Value::Int(expected)),
                 "{} failed the test",
                 raw
             );
@@ -112,7 +146,7 @@ mod tests {
         ];
         for (raw, expected) in values {
             let determined = DefaultTyper.type_raw_value(&raw.into());
-            let is_equal = if let Value::Float(parsed) = determined {
+            let is_equal = if let Some(Value::Float(parsed)) = determined {
                 parsed.is_nan() && expected.is_nan()
                     || parsed.partial_cmp(&expected) == Some(Ordering::Equal)
             } else {

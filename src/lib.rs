@@ -6,10 +6,10 @@ mod schema_inference;
 mod typer;
 mod values;
 
-pub use dataset::{Dataset, TypedDataset};
+pub use dataset::{Dataset, DefaultTypedReadingOptions, ReadingOptions, TypedDataset};
 pub use default_typer::DefaultTyper;
 pub use errors::Result;
 pub use raw_parser::{CsvParser, RawValue};
 pub use schema_inference::{infer_column_types, infer_separator, read_column_names};
-pub use typer::Typer;
+pub use typer::{ColumnValue, Typer};
 pub use values::{Value, ValueType};

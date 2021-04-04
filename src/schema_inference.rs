@@ -66,12 +66,12 @@ pub async fn infer_column_types<T: Typer>(
     while let Some(line) = lines.next_line().await? {
         let line_values = LineParser::new(line, separator, text_quote, text_quote_escape);
         for (ix, val) in line_values.enumerate() {
-            let typed_value = typer.type_raw_value(&val);
-            let type_tag = typer.tag_typed_value(&typed_value);
-
-            match column_freqs.get_mut(ix) {
-                Some(counts) => *counts.entry(type_tag).or_default() += 1,
-                None => column_freqs.push(hashmap! {type_tag => 1}),
+            if let Some(typed_value) = typer.type_raw_value(&val) {
+                let type_tag = typer.tag_typed_value(&typed_value);
+                match column_freqs.get_mut(ix) {
+                    Some(counts) => *counts.entry(type_tag).or_default() += 1,
+                    None => column_freqs.push(hashmap! {type_tag => 1}),
+                }
             }
         }
     }
