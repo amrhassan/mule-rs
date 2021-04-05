@@ -6,11 +6,6 @@ Strong-headed (yet flexible) parser of columnar datasets from CSV, TSV or other 
 [![Crates.io](https://img.shields.io/crates/l/mule)](LICENSE)
 
 # Usage #
-Add the dependency to `Cargo.toml`:
-```toml
-mule = "0.0.0"
-```
-
 ```rust
 use mule::{read_file, Result};
 
