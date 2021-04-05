@@ -2,6 +2,7 @@ use crate::raw_parser::{ColumnValue, RawValue, ValueParser};
 use crate::typer::{TypedValue, Typer};
 use derive_more::Display;
 
+/// A fully typed value
 #[derive(Clone, PartialEq, Debug)]
 pub enum Value {
     Boolean(bool),
@@ -21,6 +22,7 @@ impl TypedValue<ValueType> for Value {
     }
 }
 
+/// Tag of typed values
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
 pub enum ValueType {
     Boolean,
@@ -29,6 +31,7 @@ pub enum ValueType {
     Text,
 }
 
+/// Default typing scheme
 #[derive(Default, Debug)]
 pub struct DefaultTyper;
 

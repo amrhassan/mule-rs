@@ -2,7 +2,7 @@ use super::raw_parser::{ColumnValue, RawValue};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
-/// Infer the type of a raw value
+/// Infers the type of a raw value
 pub trait Typer: Default {
     /// Uniquely-identifying tag type for typed values
     type TypeTag: Display + Hash + Eq + Copy;
@@ -21,7 +21,8 @@ pub trait Typer: Default {
     fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::Output>;
 }
 
-/// A value of a concrete type
+/// A type that can contain values of each of the supported type variants while keeping track
+/// of the type tag at runtime.
 pub trait TypedValue<T>: Clone + Debug {
     /// Determine a tag value that identifies the type of the value
     fn tag(&self) -> T;

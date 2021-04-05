@@ -1,5 +1,6 @@
 use super::RawValue;
 
+/// A single value in a dataset's column
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum ColumnValue<A> {
     Invalid,
@@ -33,6 +34,7 @@ impl<T> ColumnValue<T> {
     }
 }
 
+/// Parsing of CSV raw values into primitive types
 pub trait ValueParser<T> {
     fn parse_csv(&self) -> ColumnValue<T>;
 }
