@@ -6,7 +6,7 @@ authors = ["Amr Hassan <amr.hassan@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/amrhassan/mule-rs"
 license = "MIT"
-categories = ["parser", "dataset", "asynchronous"]
+categories = ["parsing", "parser-implementations", "asynchronous"]
 keywords = ["csv", "tsv", "dataset", "columnar"]
 
 [package.metadata.docs.rs]
