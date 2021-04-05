@@ -1,3 +1,0 @@
-pre-release-replacements = [
-  {file="README.md", search="mule = .*$", replace="mule = \"{{version}}\""},
-]
