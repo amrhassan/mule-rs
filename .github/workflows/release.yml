@@ -56,16 +56,12 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
           target: ${{ matrix.TARGET }}
       - name: Run extra build set steps
         if: ${{ matrix.EXTRA_STEP }}
         run: ${{ matrix.EXTRA_STEP }}
-      - name: Run ssh-agent
-        uses: webfactory/ssh-agent@v0.5.0
-        with:
-          ssh-private-key: ${{ secrets.CI_BOT_SSH_KEY }}
       - name: Build
         uses: actions-rs/cargo@v1
         with:
