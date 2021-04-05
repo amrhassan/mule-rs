@@ -1,8 +1,10 @@
+use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
 use crate::raw_parser::{ColumnValue, LineParser};
-use crate::schema_inference::{count_lines, infer_column_types, read_column_names};
+use crate::schema_inference::{
+    count_lines, infer_column_types, infer_separator, read_column_names,
+};
 use crate::typer::Typer;
-use crate::{default_typer::DefaultTyper, infer_separator};
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};

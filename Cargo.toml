@@ -12,8 +12,11 @@ keywords = ["csv", "tsv", "dataset", "columnar"]
 [package.metadata.docs.rs]
 all-features = true
 
-[dependencies]
+[dev-dependencies]
 tokio = { version = "1.4.0", features = ["fs", "io-util", "rt-multi-thread", "macros"] }
+
+[dependencies]
+tokio = { version = "1.4.0", features = ["fs", "io-util"] }
 thiserror = "1"
 derive_more = "0"
 itertools = "0.10"
