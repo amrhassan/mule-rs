@@ -32,6 +32,13 @@ impl<T> ColumnValue<T> {
             ColumnValue::Some(t) => ColumnValue::Some(op(t)),
         }
     }
+
+    pub fn is_some(&self) -> bool {
+        match self {
+            ColumnValue::Some(_) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Parsing of CSV raw values into primitive types

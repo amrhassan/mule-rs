@@ -13,7 +13,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 pub struct Dataset<T: Typer> {
     pub column_names: Option<Vec<String>>,
     pub column_types: Vec<T::TypeTag>,
-    pub data: Vec<Vec<ColumnValue<T::Output>>>,
+    pub data: Vec<Vec<ColumnValue<T::TypedValue>>>,
     pub row_count: usize,
 }
 
@@ -128,8 +128,8 @@ async fn read_data<T: Typer>(
     text_quote: &str,
     text_quote_escape: &str,
     typer: &T,
-) -> Result<Vec<Vec<ColumnValue<T::Output>>>> {
-    let mut data: Vec<Vec<ColumnValue<T::Output>>> = vec![vec![]; column_types.len()];
+) -> Result<Vec<Vec<ColumnValue<T::TypedValue>>>> {
+    let mut data: Vec<Vec<ColumnValue<T::TypedValue>>> = vec![vec![]; column_types.len()];
     let mut lines = BufReader::new(File::open(file_path).await?).lines();
 
     if skip_first_row {

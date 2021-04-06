@@ -1,5 +1,5 @@
 use crate::raw_parser::{ColumnValue, RawValue, ValueParser};
-use crate::typer::{TypedValue, Typer};
+use crate::typer::Typer;
 use derive_more::Display;
 
 /// A fully typed value
@@ -9,17 +9,6 @@ pub enum Value {
     Int(i64),
     Float(f64),
     Text(String),
-}
-
-impl TypedValue<ValueType> for Value {
-    fn tag(&self) -> ValueType {
-        match self {
-            Value::Boolean(_) => ValueType::Boolean,
-            Value::Int(_) => ValueType::Int,
-            Value::Float(_) => ValueType::Float,
-            Value::Text(_) => ValueType::Text,
-        }
-    }
 }
 
 /// Tag of typed values
@@ -55,21 +44,30 @@ impl DefaultTyper {
 
 impl Typer for DefaultTyper {
     type TypeTag = ValueType;
-    type Output = Value;
+    type TypedValue = Value;
 
-    fn type_value(&self, value: &RawValue) -> Self::Output {
-        self.as_bool(value)
-            .or_else(|| self.as_int(value))
-            .or_else(|| self.as_float(value))
-            .unwrap_or_else(|| self.as_text(value))
-    }
+    const TYPES: &'static [Self::TypeTag] = &[
+        ValueType::Boolean,
+        ValueType::Int,
+        ValueType::Float,
+        ValueType::Text,
+    ];
 
-    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::Output> {
+    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::TypedValue> {
         match tag {
             ValueType::Boolean => self.as_bool(value),
             ValueType::Int => self.as_int(value),
             ValueType::Float => self.as_float(value),
             ValueType::Text => ColumnValue::Some(self.as_text(value)),
+        }
+    }
+
+    fn tag_type(&self, value: &Self::TypedValue) -> ValueType {
+        match value {
+            Value::Boolean(_) => ValueType::Boolean,
+            Value::Int(_) => ValueType::Int,
+            Value::Float(_) => ValueType::Float,
+            Value::Text(_) => ValueType::Text,
         }
     }
 }
@@ -98,7 +96,7 @@ mod tests {
         for (raw, expected) in values {
             assert_eq!(
                 DefaultTyper.type_value(&raw.into()),
-                Value::Boolean(expected),
+                ColumnValue::Some(Value::Boolean(expected)),
                 "{} failed the test",
                 raw
             );
@@ -111,7 +109,7 @@ mod tests {
         for (raw, expected) in values {
             assert_eq!(
                 DefaultTyper.type_value(&raw.into()),
-                Value::Int(expected),
+                ColumnValue::Some(Value::Int(expected)),
                 "{} failed the test",
                 raw
             );
@@ -135,7 +133,7 @@ mod tests {
         ];
         for (raw, expected) in values {
             let determined = DefaultTyper.type_value(&raw.into());
-            let is_equal = if let Value::Float(parsed) = determined {
+            let is_equal = if let ColumnValue::Some(Value::Float(parsed)) = determined {
                 parsed.is_nan() && expected.is_nan()
                     || parsed.partial_cmp(&expected) == Some(Ordering::Equal)
             } else {

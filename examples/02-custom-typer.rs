@@ -1,7 +1,5 @@
 use derive_more::Display;
-use mule::{
-    ColumnValue, Dataset, RawValue, ReadingOptions, Result, TypedValue, Typer, ValueParser,
-};
+use mule::{ColumnValue, Dataset, RawValue, ReadingOptions, Result, Typer, ValueParser};
 use std::env;
 
 #[tokio::main]
@@ -45,17 +43,6 @@ pub enum CustomValueType {
     Text,
 }
 
-impl TypedValue<CustomValueType> for CustomValue {
-    fn tag(&self) -> CustomValueType {
-        match self {
-            CustomValue::Maybe(_) => CustomValueType::Maybe,
-            CustomValue::Int(_) => CustomValueType::Int,
-            CustomValue::Float(_) => CustomValueType::Float,
-            CustomValue::Text(_) => CustomValueType::Text,
-        }
-    }
-}
-
 #[derive(Default, Debug)]
 pub struct CustomTyper;
 
@@ -84,21 +71,30 @@ impl CustomTyper {
 
 impl Typer for CustomTyper {
     type TypeTag = CustomValueType;
-    type Output = CustomValue;
+    type TypedValue = CustomValue;
 
-    fn type_value(&self, value: &RawValue) -> Self::Output {
-        self.as_maybe(value)
-            .or_else(|| self.as_int(value))
-            .or_else(|| self.as_float(value))
-            .unwrap_or_else(|| self.as_text(value))
-    }
+    const TYPES: &'static [Self::TypeTag] = &[
+        CustomValueType::Maybe,
+        CustomValueType::Int,
+        CustomValueType::Float,
+        CustomValueType::Text,
+    ];
 
-    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::Output> {
+    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::TypedValue> {
         match tag {
             CustomValueType::Maybe => self.as_maybe(value),
             CustomValueType::Int => self.as_int(value),
             CustomValueType::Float => self.as_float(value),
             CustomValueType::Text => ColumnValue::Some(self.as_text(value)),
+        }
+    }
+
+    fn tag_type(&self, value: &Self::TypedValue) -> CustomValueType {
+        match value {
+            CustomValue::Maybe(_) => CustomValueType::Maybe,
+            CustomValue::Int(_) => CustomValueType::Int,
+            CustomValue::Float(_) => CustomValueType::Float,
+            CustomValue::Text(_) => CustomValueType::Text,
         }
     }
 }

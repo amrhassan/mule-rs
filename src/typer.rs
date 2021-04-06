@@ -3,27 +3,27 @@ use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
 /// Infers the type of a raw value
-pub trait Typer: Default {
+pub trait Typer: Default + 'static {
     /// Uniquely-identifying tag type for typed values
     type TypeTag: Display + Hash + Eq + Copy;
 
     /// The type of a fully-typed single value
-    type Output: TypedValue<Self::TypeTag>;
+    type TypedValue: Debug + Clone;
 
-    /// Parse a raw value into a specialized typed value
-    ///
-    /// This method should never fail. Your type should have a fallback variant
-    /// to be used when no appropriate concrete was detected (like a Text variant).
-    fn type_value(&self, value: &RawValue) -> Self::Output;
+    /// The tags of supported types ordered by parsing priority. The earlier type tags will be attempted first.
+    const TYPES: &'static [Self::TypeTag];
 
-    /// Parse a raw value into a specific type. This should fail by parsing into `ColumnValue::Invalid`
-    /// when the specified type tag could not be used to parse the raw value.
-    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::Output>;
-}
+    /// Parse a raw value into a specific type.
+    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::TypedValue>;
 
-/// A type that can contain values of each of the supported type variants while keeping track
-/// of the type tag at runtime.
-pub trait TypedValue<T>: Clone + Debug {
     /// Determine a tag value that identifies the type of the value
-    fn tag(&self) -> T;
+    fn tag_type(&self, value: &Self::TypedValue) -> Self::TypeTag;
+
+    fn type_value(&self, value: &RawValue) -> ColumnValue<Self::TypedValue> {
+        Self::TYPES
+            .iter()
+            .map(|tag| self.type_value_as(value, *tag))
+            .find(|v| v.is_some())
+            .unwrap_or(ColumnValue::Invalid)
+    }
 }

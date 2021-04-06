@@ -9,4 +9,4 @@ pub use dataset::{read_file, Dataset, ReadingOptions, Separator, TypedDataset};
 pub use default_typer::{DefaultTyper, Value, ValueType};
 pub use errors::Result;
 pub use raw_parser::{ColumnValue, RawValue, ValueParser};
-pub use typer::{TypedValue, Typer};
+pub use typer::Typer;

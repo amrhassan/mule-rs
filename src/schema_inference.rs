@@ -1,6 +1,6 @@
 use super::errors::Result;
-use super::raw_parser::LineParser;
-use super::typer::{TypedValue, Typer};
+use super::raw_parser::{ColumnValue, LineParser};
+use super::typer::Typer;
 use crate::errors::MuleError;
 use itertools::Itertools;
 use maplit::hashmap;
@@ -80,11 +80,12 @@ pub async fn infer_column_types<T: Typer>(
         count += 1;
         let line_values = LineParser::new(line, separator, text_quote, text_quote_escape);
         for (ix, val) in line_values.enumerate() {
-            let typed_value = typer.type_value(&val);
-            let type_tag = typed_value.tag();
-            match column_freqs.get_mut(ix) {
-                Some(counts) => *counts.entry(type_tag).or_default() += 1,
-                None => column_freqs.push(hashmap! {type_tag => 1}),
+            if let ColumnValue::Some(typed_val) = typer.type_value(&val) {
+                let type_tag = typer.tag_type(&typed_val);
+                match column_freqs.get_mut(ix) {
+                    Some(counts) => *counts.entry(type_tag).or_default() += 1,
+                    None => column_freqs.push(hashmap! {type_tag => 1}),
+                }
             }
         }
     }
