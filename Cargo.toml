@@ -1,7 +1,7 @@
 [package]
 name = "mule"
 description = "Strong-headed (yet flexible) parser of columnar datasets from CSV, TSV or other delimiter-separated datasets"
-version = "0.3.0"
+version = "0.3.1-alpha.0"
 authors = ["Amr Hassan <amr.hassan@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/amrhassan/mule-rs"
