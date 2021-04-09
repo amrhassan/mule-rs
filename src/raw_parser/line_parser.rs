@@ -102,7 +102,7 @@ impl<'a> LineParser<'a> {
     }
 
     fn parse_unquoted(&self) -> (UnquotedRawValue, usize) {
-        let end = self.next_separator_ix().unwrap_or(self.line.len());
+        let end = self.next_separator_ix().unwrap_or_else(|| self.line.len());
         let (raw, n) = self.parse_to(end);
         (raw.into(), n)
     }

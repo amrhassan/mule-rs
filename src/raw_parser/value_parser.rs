@@ -34,10 +34,7 @@ impl<T> ColumnValue<T> {
     }
 
     pub fn is_some(&self) -> bool {
-        match self {
-            ColumnValue::Some(_) => true,
-            _ => false,
-        }
+        matches!(self, ColumnValue::Some(_))
     }
 }
 

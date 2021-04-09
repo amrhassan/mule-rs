@@ -49,7 +49,7 @@ pub async fn read_column_names(
 pub async fn count_lines(reader: impl AsyncRead + Unpin) -> Result<usize> {
     let mut count = 0;
     let mut lines = BufReader::new(reader).lines();
-    while let Some(_) = lines.next_line().await? {
+    while lines.next_line().await?.is_some() {
         count += 1;
     }
     Ok(count)
