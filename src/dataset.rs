@@ -6,6 +6,7 @@ use crate::schema_inference::{infer_schema, infer_separator};
 use crate::typer::Typer;
 use std::path::Path;
 
+/// Strongly-typed columnar dataset
 #[derive(Debug, Clone)]
 pub struct Dataset<T: Typer> {
     pub column_names: Option<Vec<String>>,

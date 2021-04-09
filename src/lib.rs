@@ -15,4 +15,5 @@ pub use dataset::{
 pub use default_typer::{DefaultTyper, Value, ValueType};
 pub use errors::Result;
 pub use raw_parser::{ColumnValue, RawValue, ValueParser};
+pub use schema_inference::{infer_schema, infer_separator};
 pub use typer::Typer;

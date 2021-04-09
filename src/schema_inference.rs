@@ -10,7 +10,7 @@ use tokio_stream::StreamExt;
 
 static COMMON_SEPARATORS: [&str; 3] = [",", "\t", "|"];
 
-/// Detects the separator used the most in the given reader from the common separators
+/// Infer the separator as the most commonly used separator in the file
 pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
     let mut counts: HashMap<&str, usize> = HashMap::default();
 
@@ -30,6 +30,8 @@ pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
     Ok(sep.to_string())
 }
 
+/// Infer the schema of a file by determining the type of each column as the one that most of
+/// the column values can be parsed into.
 pub async fn infer_schema<T: Typer>(
     file_path: impl AsRef<Path>,
     skip_first_line: bool,
