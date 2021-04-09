@@ -1,5 +1,13 @@
+mod file_parser;
 mod line_parser;
 mod value_parser;
 
+pub use file_parser::{read_file_column_names, read_file_data};
 pub use line_parser::{LineParser, RawValue};
 pub use value_parser::{ColumnValue, ValueParser};
+
+pub struct ParsingOptions {
+    pub separator: String,
+    pub text_quote: String,
+    pub text_quote_escape: String,
+}

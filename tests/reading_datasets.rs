@@ -7,11 +7,11 @@ pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
     let typer = DefaultTyper::default();
     let dataset = Dataset::read_file("datasets/sales-10-weird.csv", options, &typer).await?;
 
-    let column_types = dataset.column_types;
+    let schema = dataset.schema;
     let column_names = dataset.column_names;
     let data = dataset.data;
 
-    let expected_column_types = vec![
+    let expected_schema = vec![
         ValueType::Text,
         ValueType::Text,
         ValueType::Text,
@@ -50,8 +50,8 @@ pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
         .collect_vec(),
     );
 
-    assert_eq!(column_types, expected_column_types);
-    assert_eq!(column_types.len(), 14);
+    assert_eq!(schema, expected_schema);
+    assert_eq!(schema.len(), 14);
     assert_eq!(column_names, expected_column_names);
     assert_eq!(column_names.map(|ns| ns.len()), Some(14));
     assert_eq!(data.len(), 14);

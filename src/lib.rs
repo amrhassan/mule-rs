@@ -4,6 +4,7 @@
 mod dataset;
 mod default_typer;
 mod errors;
+mod file;
 mod raw_parser;
 mod schema_inference;
 mod typer;

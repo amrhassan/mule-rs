@@ -17,6 +17,8 @@ tokio = { version = "1.4.0", features = ["fs", "io-util", "rt-multi-thread", "ma
 
 [dependencies]
 tokio = { version = "1.4.0", features = ["fs", "io-util"] }
+tokio-stream = { version = "0.1", features = ["io-util"] }
+futures-core = "0.3"
 thiserror = "1"
 derive_more = "0"
 itertools = "0.10"
