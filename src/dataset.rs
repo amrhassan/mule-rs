@@ -32,8 +32,10 @@ impl<T: Typer> Dataset<T> {
         typer: &T,
     ) -> Result<Dataset<T>> {
         let line_count = count_lines(File::open(file_path.clone()).await?).await?;
-        let schema_inference_depth =
-            (options.schema_inference_percentage.min(1.0) * line_count as f64).ceil() as usize;
+        let schema_inference_line_count = match options.schema_inference_depth {
+            SchemaInferenceDepth::Lines(n) => n,
+            SchemaInferenceDepth::Percentage(x) => (x.min(1.0) * line_count as f32).ceil() as usize,
+        };
 
         let separator = match options.separator {
             Separator::Value(value) => value,
@@ -61,7 +63,7 @@ impl<T: Typer> Dataset<T> {
         let column_types = infer_column_types(
             File::open(file_path.clone()).await?,
             skip_first_row,
-            schema_inference_depth,
+            schema_inference_line_count,
             &separator,
             &options.text_quote,
             &options.text_quote_escape,
@@ -98,11 +100,19 @@ pub enum Separator {
     Infer,
 }
 
+/// Number of lines to read while inferring the dataset schema
+#[derive(Copy, Clone, Debug)]
+pub enum SchemaInferenceDepth {
+    /// Percentage of total number of lines
+    Percentage(f32),
+    /// Absolute number of lines
+    Lines(usize),
+}
+
 #[derive(Clone, Debug)]
 pub struct ReadingOptions {
     pub read_header: bool,
-    /// A value between 0.0 and 1.0 indicating the percentage of rows to read for schema inference
-    pub schema_inference_percentage: f64,
+    pub schema_inference_depth: SchemaInferenceDepth,
     pub separator: Separator,
     pub text_quote: String,
     pub text_quote_escape: String,
@@ -112,7 +122,7 @@ impl Default for ReadingOptions {
     fn default() -> Self {
         ReadingOptions {
             read_header: true,
-            schema_inference_percentage: 0.01,
+            schema_inference_depth: SchemaInferenceDepth::Percentage(0.01),
             separator: Separator::Infer,
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),

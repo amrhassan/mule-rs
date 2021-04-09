@@ -8,10 +8,7 @@ pub async fn main() -> Result<()> {
         .skip(1)
         .next()
         .unwrap_or_else(|| "datasets/sales-10.tsv".to_string());
-    let options = ReadingOptions {
-        schema_inference_percentage: 0.5, // Will read 50% of the dataset to infer its schema
-        ..ReadingOptions::default()
-    };
+    let options = ReadingOptions::default();
     let typer = CustomTyper::default();
     let dataset = Dataset::read_file(file_path, options, &typer).await?;
 
