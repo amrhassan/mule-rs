@@ -40,6 +40,14 @@ pub enum CustomValueType {
     Text,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum CustomColumn {
+    Maybe(Vec<ColumnValue<YayNay>>),
+    Int(Vec<ColumnValue<i64>>),
+    Float(Vec<ColumnValue<f64>>),
+    Text(Vec<ColumnValue<String>>),
+}
+
 #[derive(Default, Debug)]
 pub struct CustomTyper;
 
@@ -64,11 +72,64 @@ impl CustomTyper {
             _ => ColumnValue::Invalid,
         }
     }
+
+    fn as_maybe_column(&self, values: Vec<ColumnValue<CustomValue>>) -> CustomColumn {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(CustomValue::Maybe(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        CustomColumn::Maybe(vs)
+    }
+
+    fn as_int_column(&self, values: Vec<ColumnValue<CustomValue>>) -> CustomColumn {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(CustomValue::Int(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        CustomColumn::Int(vs)
+    }
+
+    fn as_float_column(&self, values: Vec<ColumnValue<CustomValue>>) -> CustomColumn {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(CustomValue::Float(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        CustomColumn::Float(vs)
+    }
+
+    fn as_text_column(&self, values: Vec<ColumnValue<CustomValue>>) -> CustomColumn {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(CustomValue::Text(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        CustomColumn::Text(vs)
+    }
 }
 
 impl Typer for CustomTyper {
     type TypeTag = CustomValueType;
     type TypedValue = CustomValue;
+    type TypedColumn = CustomColumn;
 
     const TYPES: &'static [Self::TypeTag] = &[
         CustomValueType::Maybe,
@@ -92,6 +153,19 @@ impl Typer for CustomTyper {
             CustomValue::Int(_) => CustomValueType::Int,
             CustomValue::Float(_) => CustomValueType::Float,
             CustomValue::Text(_) => CustomValueType::Text,
+        }
+    }
+
+    fn type_column(
+        &self,
+        tag: Self::TypeTag,
+        values: Vec<ColumnValue<Self::TypedValue>>,
+    ) -> Self::TypedColumn {
+        match tag {
+            CustomValueType::Maybe => self.as_maybe_column(values),
+            CustomValueType::Int => self.as_int_column(values),
+            CustomValueType::Float => self.as_float_column(values),
+            CustomValueType::Text => self.as_text_column(values),
         }
     }
 }

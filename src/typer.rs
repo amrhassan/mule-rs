@@ -10,6 +10,8 @@ pub trait Typer: Default + 'static {
     /// The type of a fully-typed single value
     type TypedValue: Debug + Clone;
 
+    type TypedColumn;
+
     /// The tags of supported types ordered by parsing priority. The earlier type tags will be attempted first.
     const TYPES: &'static [Self::TypeTag];
 
@@ -26,4 +28,10 @@ pub trait Typer: Default + 'static {
             .find(|v| v.is_some())
             .unwrap_or(ColumnValue::Invalid)
     }
+
+    fn type_column(
+        &self,
+        tag: Self::TypeTag,
+        values: Vec<ColumnValue<Self::TypedValue>>,
+    ) -> Self::TypedColumn;
 }

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use mule::{ColumnValue, Dataset, DefaultTyper, ReadingOptions, Result, Typer, ValueType};
+use mule::{Column, Dataset, DefaultTyper, ReadingOptions, Result, ValueType};
 
 #[tokio::test]
 pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
@@ -57,19 +57,13 @@ pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
     assert_eq!(data.len(), 14);
 
     for column in data {
-        let col_types = column
-            .iter()
-            .flat_map(|v| match v {
-                ColumnValue::Invalid => vec![].into_iter(),
-                ColumnValue::Missing => vec![].into_iter(),
-                ColumnValue::Some(x) => vec![typer.tag_type(&x)].into_iter(),
-            })
-            .collect_vec();
-        assert!(
-            col_types.iter().all_equal(),
-            "The column has multiple types! {:?}",
-            col_types
-        )
+        let all_good = match &column {
+            Column::Boolean(vs) => vs.iter().all(|v| v.is_some()),
+            Column::Int(vs) => vs.iter().all(|v| v.is_some()),
+            Column::Float(vs) => vs.iter().all(|v| v.is_some()),
+            Column::Text(vs) => vs.iter().all(|v| v.is_some()),
+        };
+        assert!(all_good, "The column has invalid values! {:?}", column)
     }
 
     Ok(())

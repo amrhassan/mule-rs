@@ -12,7 +12,7 @@ mod typer;
 pub use dataset::{
     read_file, Dataset, ReadingOptions, SchemaInferenceDepth, Separator, TypedDataset,
 };
-pub use default_typer::{DefaultTyper, Value, ValueType};
+pub use default_typer::{Column, DefaultTyper, Value, ValueType};
 pub use errors::Result;
 pub use raw_parser::{ColumnValue, RawValue, ValueParser};
 pub use schema_inference::{infer_schema, infer_separator};

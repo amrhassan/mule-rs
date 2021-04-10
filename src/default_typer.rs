@@ -2,7 +2,7 @@ use crate::raw_parser::{ColumnValue, RawValue, ValueParser};
 use crate::typer::Typer;
 use derive_more::Display;
 
-/// A fully typed value
+/// Fully typed value
 #[derive(Clone, PartialEq, Debug)]
 pub enum Value {
     Boolean(bool),
@@ -18,6 +18,15 @@ pub enum ValueType {
     Int,
     Float,
     Text,
+}
+
+/// Column of typed values
+#[derive(Clone, Debug, PartialEq)]
+pub enum Column {
+    Boolean(Vec<ColumnValue<bool>>),
+    Int(Vec<ColumnValue<i64>>),
+    Float(Vec<ColumnValue<f64>>),
+    Text(Vec<ColumnValue<String>>),
 }
 
 /// Default typing scheme
@@ -40,11 +49,64 @@ impl DefaultTyper {
     fn as_text(&self, value: &RawValue) -> Value {
         Value::Text(value.0.to_string())
     }
+
+    fn as_bool_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(Value::Boolean(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        Column::Boolean(vs)
+    }
+
+    fn as_int_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(Value::Int(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        Column::Int(vs)
+    }
+
+    fn as_float_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(Value::Float(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        Column::Float(vs)
+    }
+
+    fn as_text_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+        let vs = values
+            .into_iter()
+            .map(|v| match v {
+                ColumnValue::Some(Value::Text(x)) => ColumnValue::Some(x),
+                ColumnValue::Invalid => ColumnValue::Invalid,
+                ColumnValue::Missing => ColumnValue::Missing,
+                _ => ColumnValue::Invalid,
+            })
+            .collect();
+        Column::Text(vs)
+    }
 }
 
 impl Typer for DefaultTyper {
     type TypeTag = ValueType;
     type TypedValue = Value;
+    type TypedColumn = Column;
 
     const TYPES: &'static [Self::TypeTag] = &[
         ValueType::Boolean,
@@ -68,6 +130,19 @@ impl Typer for DefaultTyper {
             Value::Int(_) => ValueType::Int,
             Value::Float(_) => ValueType::Float,
             Value::Text(_) => ValueType::Text,
+        }
+    }
+
+    fn type_column(
+        &self,
+        tag: Self::TypeTag,
+        values: Vec<ColumnValue<Self::TypedValue>>,
+    ) -> Self::TypedColumn {
+        match tag {
+            ValueType::Boolean => self.as_bool_column(values),
+            ValueType::Int => self.as_int_column(values),
+            ValueType::Float => self.as_float_column(values),
+            ValueType::Text => self.as_text_column(values),
         }
     }
 }

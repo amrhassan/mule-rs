@@ -15,7 +15,7 @@ pub async fn read_file_data<T: Typer>(
     line_count: usize,
     skip_first_line: bool,
     typer: &T,
-) -> Result<Vec<Vec<ColumnValue<T::TypedValue>>>> {
+) -> Result<Vec<T::TypedColumn>> {
     let mut data: Vec<Vec<ColumnValue<T::TypedValue>>> =
         vec![Vec::with_capacity(line_count); schema.len()];
     let lines_to_skip = if skip_first_line { 1 } else { 0 };
@@ -28,7 +28,12 @@ pub async fn read_file_data<T: Typer>(
             data[col_ix].push(column_value);
         }
     }
-    Ok(data)
+    let typed_data = data
+        .into_iter()
+        .zip(schema.iter())
+        .map(|(vals, tag)| typer.type_column(*tag, vals))
+        .collect();
+    Ok(typed_data)
 }
 
 pub async fn read_file_column_names(

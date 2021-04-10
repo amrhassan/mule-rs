@@ -1,7 +1,7 @@
 use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
 use crate::file;
-use crate::raw_parser::{read_file_column_names, read_file_data, ColumnValue, ParsingOptions};
+use crate::raw_parser::{read_file_column_names, read_file_data, ParsingOptions};
 use crate::schema_inference::{infer_schema, infer_separator};
 use crate::typer::Typer;
 use std::path::Path;
@@ -11,7 +11,7 @@ use std::path::Path;
 pub struct Dataset<T: Typer> {
     pub column_names: Option<Vec<String>>,
     pub schema: Vec<T::TypeTag>,
-    pub data: Vec<Vec<ColumnValue<T::TypedValue>>>,
+    pub data: Vec<T::TypedColumn>,
     pub row_count: usize,
 }
 
