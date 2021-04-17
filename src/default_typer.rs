@@ -29,6 +29,13 @@ pub enum ColumnType {
     Int,
     Float,
     Text,
+    Unknown,
+}
+
+impl Default for ColumnType {
+    fn default() -> Self {
+        ColumnType::Unknown
+    }
 }
 
 /// Column of typed values
@@ -38,10 +45,17 @@ pub enum Column {
     Int(Vec<Parsed<i64>>),
     Float(Vec<Parsed<f64>>),
     Text(Vec<Parsed<String>>),
+    Unknown,
+}
+
+impl Default for Column {
+    fn default() -> Self {
+        Column::Unknown
+    }
 }
 
 /// Default typing scheme
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct DefaultTyper;
 
 impl DefaultTyper {
@@ -132,6 +146,7 @@ impl Typer for DefaultTyper {
             ColumnType::Int => self.as_int(value),
             ColumnType::Float => self.as_float(value),
             ColumnType::Text => Parsed::Some(self.as_text(value)),
+            ColumnType::Unknown => Parsed::Invalid,
         }
     }
 
@@ -145,6 +160,7 @@ impl Typer for DefaultTyper {
             ColumnType::Int => self.as_int_column(values),
             ColumnType::Float => self.as_float_column(values),
             ColumnType::Text => self.as_text_column(values),
+            ColumnType::Unknown => Self::Column::default(),
         }
     }
 }

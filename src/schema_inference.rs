@@ -1,5 +1,5 @@
-use crate::errors::MuleError;
 use crate::raw_parser::{LineParser, Parsed, ParsingOptions};
+use crate::schema::Schema;
 use crate::typer::{DatasetValue, Typer};
 use crate::{errors::Result, file};
 use itertools::Itertools;
@@ -30,25 +30,44 @@ pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
     Ok(sep.to_string())
 }
 
+// pub enum HeaderInference {
+//     ReadHeader,
+//     IgnoreHeader,
+//     InferHeader,
+// }
+
+pub enum InferenceDepth {
+    Percentage(f64),
+    Absolute(usize),
+}
+
 /// Infer the schema of a file by determining the type of each column as the one that most of
 /// the column values can be parsed into.
 pub async fn infer_schema<T: Typer>(
     file_path: impl AsRef<Path>,
-    skip_first_line: bool,
-    inference_depth: usize,
-    options: &ParsingOptions,
+    skip_header: bool,
+    inference_depth: InferenceDepth,
+    parsing_options: &ParsingOptions,
     typer: T,
-) -> Result<Vec<T::ColumnType>> {
-    let lines_to_skip = if skip_first_line { 1 } else { 0 };
+) -> Result<Schema<T>> {
+    let lines_to_skip = if skip_header { 1 } else { 0 };
+    let lines_to_read = match inference_depth {
+        InferenceDepth::Absolute(n) => n,
+        InferenceDepth::Percentage(percentage) => {
+            let line_count = file::count_lines(&file_path).await?;
+            (percentage.min(1.0) * (line_count as f64)).ceil() as usize
+        }
+    };
+
     let mut lines = file::read_lines(file_path)
         .await?
         .skip(lines_to_skip)
-        .take(inference_depth);
+        .take(lines_to_read);
 
     let mut column_freqs: Vec<HashMap<T::ColumnType, usize>> = Vec::new();
 
     while let Some(line_res) = lines.next().await {
-        let line_values = LineParser::new(line_res?, &options);
+        let line_values = LineParser::new(line_res?, &parsing_options);
         for (ix, val) in line_values.enumerate() {
             if let Parsed::Some(parsed) = typer.parse(&val) {
                 let column_type = parsed.get_column_type();
@@ -60,24 +79,19 @@ pub async fn infer_schema<T: Typer>(
         }
     }
 
-    let mut output = vec![];
+    let column_types = column_freqs
+        .into_iter()
+        .map(|types| {
+            types
+                .into_iter()
+                .sorted_by_key(|(_, count)| *count)
+                .last()
+                .map(|(column_type, _)| column_type)
+                .unwrap_or(T::ColumnType::default())
+        })
+        .collect();
 
-    for (col_ix, col_freq) in column_freqs.into_iter().enumerate() {
-        let type_tag = col_freq
-            .into_iter()
-            .sorted_by_key(|(_, count)| *count)
-            .last()
-            .map(|(tag, _)| tag)
-            .ok_or_else(|| {
-                MuleError::ColumnTyping(format!(
-                    "Failed to find at least a single matching type for column {}",
-                    col_ix
-                ))
-            })?;
-        output.push(type_tag);
-    }
-
-    Ok(output)
+    Ok(Schema { column_types })
 }
 
 #[cfg(test)]
@@ -105,27 +119,35 @@ mod test {
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let column_types =
-            infer_schema("datasets/sales-100.csv", true, 200, &parsing_options, typer).await?;
+        let schema = infer_schema(
+            "datasets/sales-100.csv",
+            true,
+            InferenceDepth::Percentage(0.1),
+            &parsing_options,
+            typer,
+        )
+        .await?;
 
-        let expected = vec![
-            ColumnType::Text,
-            ColumnType::Text,
-            ColumnType::Text,
-            ColumnType::Text,
-            ColumnType::Text,
-            ColumnType::Text,
-            ColumnType::Int,
-            ColumnType::Text,
-            ColumnType::Int,
-            ColumnType::Float,
-            ColumnType::Float,
-            ColumnType::Float,
-            ColumnType::Float,
-            ColumnType::Float,
-        ];
+        let expected_schema = Schema::<DefaultTyper> {
+            column_types: vec![
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Text,
+                ColumnType::Int,
+                ColumnType::Text,
+                ColumnType::Int,
+                ColumnType::Float,
+                ColumnType::Float,
+                ColumnType::Float,
+                ColumnType::Float,
+                ColumnType::Float,
+            ],
+        };
 
-        assert_eq!(expected, column_types);
+        assert_eq!(schema, expected_schema);
 
         Ok(())
     }

@@ -2,7 +2,8 @@ use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
 use crate::file;
 use crate::raw_parser::{read_file_column_names, read_file_data, ParsingOptions};
-use crate::schema_inference::{infer_schema, infer_separator};
+use crate::schema::Schema;
+use crate::schema_inference::{infer_schema, infer_separator, InferenceDepth};
 use crate::typer::Typer;
 use std::path::Path;
 
@@ -10,7 +11,7 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct Dataset<T: Typer> {
     pub column_names: Option<Vec<String>>,
-    pub schema: Vec<T::ColumnType>,
+    pub schema: Schema<T>,
     pub data: Vec<T::Column>,
     pub row_count: usize,
 }
@@ -59,9 +60,9 @@ impl<T: Typer> Dataset<T> {
             line_count
         };
         let schema = infer_schema(
-            file_path.clone(),
+            &file_path,
             skip_first_line,
-            schema_inference_line_count,
+            InferenceDepth::Absolute(schema_inference_line_count),
             &parsing_options,
             T::default(),
         )

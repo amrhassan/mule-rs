@@ -49,6 +49,13 @@ pub enum CustomColumnType {
     Int,
     Float,
     Text,
+    Unknown,
+}
+
+impl Default for CustomColumnType {
+    fn default() -> Self {
+        CustomColumnType::Unknown
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -57,6 +64,13 @@ pub enum CustomColumn {
     Int(Vec<Parsed<i64>>),
     Float(Vec<Parsed<f64>>),
     Text(Vec<Parsed<String>>),
+    Unknown,
+}
+
+impl Default for CustomColumn {
+    fn default() -> Self {
+        CustomColumn::Unknown
+    }
 }
 
 #[derive(Default, Debug)]
@@ -155,6 +169,7 @@ impl Typer for CustomTyper {
             CustomColumnType::Int => self.as_int(value),
             CustomColumnType::Float => self.as_float(value),
             CustomColumnType::Text => Parsed::Some(self.as_text(value)),
+            CustomColumnType::Unknown => Parsed::Invalid,
         }
     }
 
@@ -168,6 +183,7 @@ impl Typer for CustomTyper {
             CustomColumnType::Int => self.as_int_column(values),
             CustomColumnType::Float => self.as_float_column(values),
             CustomColumnType::Text => self.as_text_column(values),
+            CustomColumnType::Unknown => Self::Column::default(),
         }
     }
 }
