@@ -1,51 +1,8 @@
+use super::value::RawValue;
 use super::ParsingOptions;
-use derive_more::{Display, From, Into};
+use derive_more::From;
 
-/// A CSV value
-#[derive(Debug, Clone, Hash, PartialEq, Eq, From, Into, Display)]
-pub struct RawValue(pub String);
-
-impl From<&str> for RawValue {
-    fn from(s: &str) -> Self {
-        s.to_string().into()
-    }
-}
-
-impl<'a> From<UnquotedRawValue<'a>> for RawValue {
-    fn from(v: UnquotedRawValue<'a>) -> Self {
-        RawValue(v.0.to_string())
-    }
-}
-
-impl<'a> From<QuotedRawValue<'a>> for RawValue {
-    fn from(v: QuotedRawValue<'a>) -> RawValue {
-        let quote_l = v.raw.find(&v.options.text_quote);
-        let quote_r = v.raw.rfind(&v.options.text_quote);
-        match (quote_l, quote_r) {
-            (Some(ix_l), Some(ix_r)) if ix_l < ix_r => v.raw
-                [ix_l + v.options.text_quote.len()..ix_r]
-                .replace(&v.options.text_quote_escape, "")
-                .into(),
-            _ => v.raw.to_string().into(),
-        }
-    }
-}
-
-#[derive(From)]
-struct UnquotedRawValue<'a>(&'a str);
-
-struct QuotedRawValue<'a> {
-    raw: &'a str,
-    options: &'a ParsingOptions,
-}
-
-impl<'a> QuotedRawValue<'a> {
-    fn new(raw: &'a str, options: &'a ParsingOptions) -> QuotedRawValue<'a> {
-        QuotedRawValue { raw, options }
-    }
-}
-
-/// A value parser for a single line implemented as an iterator
+/// An iterator over a line from a CSV file that yields [[RawValue]] instances.
 pub struct LineParser<'a> {
     line: String,
     options: &'a ParsingOptions,
@@ -137,6 +94,40 @@ impl<'a> Iterator for LineParser<'a> {
 
         self.next_start = next_start;
         Some(value)
+    }
+}
+
+#[derive(From)]
+struct UnquotedRawValue<'a>(&'a str);
+
+impl<'a> From<UnquotedRawValue<'a>> for RawValue {
+    fn from(v: UnquotedRawValue<'a>) -> Self {
+        RawValue(v.0.to_string())
+    }
+}
+
+struct QuotedRawValue<'a> {
+    raw: &'a str,
+    options: &'a ParsingOptions,
+}
+
+impl<'a> From<QuotedRawValue<'a>> for RawValue {
+    fn from(v: QuotedRawValue<'a>) -> RawValue {
+        let quote_l = v.raw.find(&v.options.text_quote);
+        let quote_r = v.raw.rfind(&v.options.text_quote);
+        match (quote_l, quote_r) {
+            (Some(ix_l), Some(ix_r)) if ix_l < ix_r => v.raw
+                [ix_l + v.options.text_quote.len()..ix_r]
+                .replace(&v.options.text_quote_escape, "")
+                .into(),
+            _ => v.raw.to_string().into(),
+        }
+    }
+}
+
+impl<'a> QuotedRawValue<'a> {
+    fn new(raw: &'a str, options: &'a ParsingOptions) -> QuotedRawValue<'a> {
+        QuotedRawValue { raw, options }
     }
 }
 

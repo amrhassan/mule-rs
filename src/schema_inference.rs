@@ -1,3 +1,4 @@
+use crate::default_typer::DefaultTyper;
 use crate::raw_parser::{LineParser, Parsed, ParsingOptions};
 use crate::schema::Schema;
 use crate::typer::{DatasetValue, Typer};
@@ -30,12 +31,6 @@ pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
     Ok(sep.to_string())
 }
 
-// pub enum HeaderInference {
-//     ReadHeader,
-//     IgnoreHeader,
-//     InferHeader,
-// }
-
 /// Number of lines to read while inferring the dataset schema
 #[derive(Copy, Clone, Debug)]
 pub enum SchemaInferenceDepth {
@@ -49,6 +44,25 @@ impl Default for SchemaInferenceDepth {
     fn default() -> Self {
         SchemaInferenceDepth::Percentage(0.1)
     }
+}
+
+/// Opens and infers the schema of the dataset at the specified path using the default options and type system.
+pub async fn infer_file_schema(
+    file_path: impl AsRef<Path> + Clone,
+    inference_depth: &SchemaInferenceDepth,
+    parsing_options: &ParsingOptions,
+) -> Result<Schema<DefaultTyper>> {
+    let typer = DefaultTyper::default();
+    let skip_header = true;
+    let schema = infer_schema(
+        file_path,
+        skip_header,
+        inference_depth,
+        parsing_options,
+        typer,
+    )
+    .await?;
+    Ok(schema)
 }
 
 /// Infer the schema of a file by determining the type of each column as the one that most of
