@@ -36,9 +36,19 @@ pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
 //     InferHeader,
 // }
 
-pub enum InferenceDepth {
-    Percentage(f64),
-    Absolute(usize),
+/// Number of lines to read while inferring the dataset schema
+#[derive(Copy, Clone, Debug)]
+pub enum SchemaInferenceDepth {
+    /// Percentage of total number of lines
+    Percentage(f32),
+    /// Absolute number of lines
+    Lines(usize),
+}
+
+impl Default for SchemaInferenceDepth {
+    fn default() -> Self {
+        SchemaInferenceDepth::Percentage(0.1)
+    }
 }
 
 /// Infer the schema of a file by determining the type of each column as the one that most of
@@ -46,16 +56,16 @@ pub enum InferenceDepth {
 pub async fn infer_schema<T: Typer>(
     file_path: impl AsRef<Path>,
     skip_header: bool,
-    inference_depth: InferenceDepth,
+    inference_depth: &SchemaInferenceDepth,
     parsing_options: &ParsingOptions,
     typer: T,
 ) -> Result<Schema<T>> {
     let lines_to_skip = if skip_header { 1 } else { 0 };
     let lines_to_read = match inference_depth {
-        InferenceDepth::Absolute(n) => n,
-        InferenceDepth::Percentage(percentage) => {
+        SchemaInferenceDepth::Lines(n) => *n,
+        SchemaInferenceDepth::Percentage(percentage) => {
             let line_count = file::count_lines(&file_path).await?;
-            (percentage.min(1.0) * (line_count as f64)).ceil() as usize
+            ((*percentage).min(1.0) * (line_count as f32)).ceil() as usize
         }
     };
 
@@ -122,7 +132,7 @@ mod test {
         let schema = infer_schema(
             "datasets/sales-100.csv",
             true,
-            InferenceDepth::Percentage(0.1),
+            &SchemaInferenceDepth::Percentage(0.1),
             &parsing_options,
             typer,
         )

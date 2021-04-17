@@ -3,7 +3,7 @@ use crate::errors::Result;
 use crate::file;
 use crate::raw_parser::{read_file_column_names, read_file_data, ParsingOptions};
 use crate::schema::Schema;
-use crate::schema_inference::{infer_schema, infer_separator, InferenceDepth};
+use crate::schema_inference::{infer_schema, infer_separator, SchemaInferenceDepth};
 use crate::typer::Typer;
 use std::path::Path;
 
@@ -62,14 +62,14 @@ impl<T: Typer> Dataset<T> {
         let schema = infer_schema(
             &file_path,
             skip_first_line,
-            InferenceDepth::Absolute(schema_inference_line_count),
+            &SchemaInferenceDepth::Lines(schema_inference_line_count),
             &parsing_options,
             T::default(),
         )
         .await?;
 
         let data = read_file_data(
-            file_path.clone(),
+            &file_path,
             &schema,
             &parsing_options,
             line_count,
@@ -94,15 +94,6 @@ pub type TypedDataset = Dataset<DefaultTyper>;
 pub enum Separator {
     Value(String),
     Infer,
-}
-
-/// Number of lines to read while inferring the dataset schema
-#[derive(Copy, Clone, Debug)]
-pub enum SchemaInferenceDepth {
-    /// Percentage of total number of lines
-    Percentage(f32),
-    /// Absolute number of lines
-    Lines(usize),
 }
 
 #[derive(Clone, Debug)]

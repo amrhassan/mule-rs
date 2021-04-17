@@ -11,3 +11,13 @@ pub struct ParsingOptions {
     pub text_quote: String,
     pub text_quote_escape: String,
 }
+
+impl Default for ParsingOptions {
+    fn default() -> Self {
+        ParsingOptions {
+            separator: ",".to_string(),
+            text_quote: "\"".to_string(),
+            text_quote_escape: "\\".to_string(),
+        }
+    }
+}

@@ -10,12 +10,10 @@ mod schema;
 mod schema_inference;
 mod typer;
 
-pub use dataset::{
-    read_file, Dataset, ReadingOptions, SchemaInferenceDepth, Separator, TypedDataset,
-};
+pub use dataset::{read_file, Dataset, ReadingOptions, Separator, TypedDataset};
 pub use default_typer::{Column, ColumnType, DefaultTyper, Value};
 pub use errors::Result;
-pub use raw_parser::{Parsed, RawValue, ValueParser};
+pub use raw_parser::{Parsed, ParsingOptions, RawValue, ValueParser};
 pub use schema::Schema;
-pub use schema_inference::{infer_schema, infer_separator};
+pub use schema_inference::{infer_schema, infer_separator, SchemaInferenceDepth};
 pub use typer::{DatasetValue, Typer};
