@@ -1,37 +1,40 @@
-use super::raw_parser::{ColumnValue, RawValue};
+use super::raw_parser::{Parsed, RawValue};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
-/// Infers the type of a raw value
 pub trait Typer: Default + 'static {
-    /// Uniquely-identifying tag type for typed values
-    type TypeTag: Display + Hash + Eq + Copy;
+    type ColumnType: Display + Hash + Eq + Copy;
+    type DatasetValue: DatasetValue<Self::ColumnType>;
+    type Column;
 
-    /// The type of a fully-typed single value
-    type TypedValue: Debug + Clone;
+    const COLUMN_TYPES: &'static [Self::ColumnType];
 
-    type TypedColumn;
+    fn parse_as(&self, value: &RawValue, tag: Self::ColumnType) -> Parsed<Self::DatasetValue>;
 
-    /// The tags of supported types ordered by parsing priority. The earlier type tags will be attempted first.
-    const TYPES: &'static [Self::TypeTag];
-
-    /// Parse a raw value into a specific type.
-    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::TypedValue>;
-
-    /// Determine a tag value that identifies the type of the value
-    fn tag_type(&self, value: &Self::TypedValue) -> Self::TypeTag;
-
-    fn type_value(&self, value: &RawValue) -> ColumnValue<Self::TypedValue> {
-        Self::TYPES
+    fn determine_type(&self, value: &RawValue) -> Option<Self::ColumnType> {
+        Self::COLUMN_TYPES
             .iter()
-            .map(|tag| self.type_value_as(value, *tag))
-            .find(|v| v.is_some())
-            .unwrap_or(ColumnValue::Invalid)
+            .copied()
+            .flat_map(|column_type| self.parse_as(value, column_type).get())
+            .map(|v| v.get_column_type())
+            .next()
     }
 
-    fn type_column(
+    fn parse(&self, value: &RawValue) -> Parsed<Self::DatasetValue> {
+        Self::COLUMN_TYPES
+            .iter()
+            .map(|tag| self.parse_as(value, *tag))
+            .find(|v| v.is_some())
+            .unwrap_or(Parsed::Invalid)
+    }
+
+    fn parse_column(
         &self,
-        tag: Self::TypeTag,
-        values: Vec<ColumnValue<Self::TypedValue>>,
-    ) -> Self::TypedColumn;
+        column_type: Self::ColumnType,
+        values: Vec<Parsed<Self::DatasetValue>>,
+    ) -> Self::Column;
+}
+
+pub trait DatasetValue<C>: Debug + Clone {
+    fn get_column_type(&self) -> C;
 }

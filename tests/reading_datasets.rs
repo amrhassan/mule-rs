@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use mule::{Column, Dataset, DefaultTyper, ReadingOptions, Result, ValueType};
+use mule::{Column, ColumnType, Dataset, DefaultTyper, ReadingOptions, Result};
 
 #[tokio::test]
 pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
@@ -12,20 +12,20 @@ pub async fn test_dataset_read_sales_10_weird() -> Result<()> {
     let data = dataset.data;
 
     let expected_schema = vec![
-        ValueType::Text,
-        ValueType::Text,
-        ValueType::Text,
-        ValueType::Text,
-        ValueType::Text,
-        ValueType::Text,
-        ValueType::Int,
-        ValueType::Text,
-        ValueType::Int,
-        ValueType::Float,
-        ValueType::Float,
-        ValueType::Float,
-        ValueType::Float,
-        ValueType::Float,
+        ColumnType::Text,
+        ColumnType::Text,
+        ColumnType::Text,
+        ColumnType::Text,
+        ColumnType::Text,
+        ColumnType::Text,
+        ColumnType::Int,
+        ColumnType::Text,
+        ColumnType::Int,
+        ColumnType::Float,
+        ColumnType::Float,
+        ColumnType::Float,
+        ColumnType::Float,
+        ColumnType::Float,
     ];
 
     let expected_column_names = Some(

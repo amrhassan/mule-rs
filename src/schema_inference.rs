@@ -1,6 +1,6 @@
 use crate::errors::MuleError;
-use crate::raw_parser::{ColumnValue, LineParser, ParsingOptions};
-use crate::typer::Typer;
+use crate::raw_parser::{LineParser, Parsed, ParsingOptions};
+use crate::typer::{DatasetValue, Typer};
 use crate::{errors::Result, file};
 use itertools::Itertools;
 use maplit::hashmap;
@@ -38,23 +38,23 @@ pub async fn infer_schema<T: Typer>(
     inference_depth: usize,
     options: &ParsingOptions,
     typer: T,
-) -> Result<Vec<T::TypeTag>> {
+) -> Result<Vec<T::ColumnType>> {
     let lines_to_skip = if skip_first_line { 1 } else { 0 };
     let mut lines = file::read_lines(file_path)
         .await?
         .skip(lines_to_skip)
         .take(inference_depth);
 
-    let mut column_freqs: Vec<HashMap<T::TypeTag, usize>> = Vec::new();
+    let mut column_freqs: Vec<HashMap<T::ColumnType, usize>> = Vec::new();
 
     while let Some(line_res) = lines.next().await {
         let line_values = LineParser::new(line_res?, &options);
         for (ix, val) in line_values.enumerate() {
-            if let ColumnValue::Some(typed_val) = typer.type_value(&val) {
-                let type_tag = typer.tag_type(&typed_val);
+            if let Parsed::Some(parsed) = typer.parse(&val) {
+                let column_type = parsed.get_column_type();
                 match column_freqs.get_mut(ix) {
-                    Some(counts) => *counts.entry(type_tag).or_default() += 1,
-                    None => column_freqs.push(hashmap! {type_tag => 1}),
+                    Some(counts) => *counts.entry(parsed.get_column_type()).or_default() += 1,
+                    None => column_freqs.push(hashmap! { column_type => 1 }),
                 }
             }
         }
@@ -83,7 +83,7 @@ pub async fn infer_schema<T: Typer>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{DefaultTyper, ValueType};
+    use crate::{ColumnType, DefaultTyper};
 
     #[tokio::test]
     pub async fn test_separator_inference() -> Result<()> {
@@ -109,20 +109,20 @@ mod test {
             infer_schema("datasets/sales-100.csv", true, 200, &parsing_options, typer).await?;
 
         let expected = vec![
-            ValueType::Text,
-            ValueType::Text,
-            ValueType::Text,
-            ValueType::Text,
-            ValueType::Text,
-            ValueType::Text,
-            ValueType::Int,
-            ValueType::Text,
-            ValueType::Int,
-            ValueType::Float,
-            ValueType::Float,
-            ValueType::Float,
-            ValueType::Float,
-            ValueType::Float,
+            ColumnType::Text,
+            ColumnType::Text,
+            ColumnType::Text,
+            ColumnType::Text,
+            ColumnType::Text,
+            ColumnType::Text,
+            ColumnType::Int,
+            ColumnType::Text,
+            ColumnType::Int,
+            ColumnType::Float,
+            ColumnType::Float,
+            ColumnType::Float,
+            ColumnType::Float,
+            ColumnType::Float,
         ];
 
         assert_eq!(expected, column_types);

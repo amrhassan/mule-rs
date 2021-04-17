@@ -1,5 +1,5 @@
-use crate::raw_parser::{ColumnValue, RawValue, ValueParser};
-use crate::typer::Typer;
+use crate::raw_parser::{Parsed, RawValue, ValueParser};
+use crate::typer::{DatasetValue, Typer};
 use derive_more::Display;
 
 /// Fully typed value
@@ -11,9 +11,20 @@ pub enum Value {
     Text(String),
 }
 
+impl DatasetValue<ColumnType> for Value {
+    fn get_column_type(&self) -> ColumnType {
+        match self {
+            Value::Boolean(_) => ColumnType::Boolean,
+            Value::Int(_) => ColumnType::Int,
+            Value::Float(_) => ColumnType::Float,
+            Value::Text(_) => ColumnType::Text,
+        }
+    }
+}
+
 /// Tag of typed values
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
-pub enum ValueType {
+pub enum ColumnType {
     Boolean,
     Int,
     Float,
@@ -23,10 +34,10 @@ pub enum ValueType {
 /// Column of typed values
 #[derive(Clone, Debug, PartialEq)]
 pub enum Column {
-    Boolean(Vec<ColumnValue<bool>>),
-    Int(Vec<ColumnValue<i64>>),
-    Float(Vec<ColumnValue<f64>>),
-    Text(Vec<ColumnValue<String>>),
+    Boolean(Vec<Parsed<bool>>),
+    Int(Vec<Parsed<i64>>),
+    Float(Vec<Parsed<f64>>),
+    Text(Vec<Parsed<String>>),
 }
 
 /// Default typing scheme
@@ -34,15 +45,15 @@ pub enum Column {
 pub struct DefaultTyper;
 
 impl DefaultTyper {
-    fn as_int(&self, value: &RawValue) -> ColumnValue<Value> {
+    fn as_int(&self, value: &RawValue) -> Parsed<Value> {
         value.parse_csv().map(Value::Int)
     }
 
-    fn as_float(&self, value: &RawValue) -> ColumnValue<Value> {
+    fn as_float(&self, value: &RawValue) -> Parsed<Value> {
         value.parse_csv().map(Value::Float)
     }
 
-    fn as_bool(&self, value: &RawValue) -> ColumnValue<Value> {
+    fn as_bool(&self, value: &RawValue) -> Parsed<Value> {
         value.parse_csv().map(Value::Boolean)
     }
 
@@ -50,53 +61,53 @@ impl DefaultTyper {
         Value::Text(value.0.to_string())
     }
 
-    fn as_bool_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+    fn as_bool_column(&self, values: Vec<Parsed<Value>>) -> Column {
         let vs = values
             .into_iter()
             .map(|v| match v {
-                ColumnValue::Some(Value::Boolean(x)) => ColumnValue::Some(x),
-                ColumnValue::Invalid => ColumnValue::Invalid,
-                ColumnValue::Missing => ColumnValue::Missing,
-                _ => ColumnValue::Invalid,
+                Parsed::Some(Value::Boolean(x)) => Parsed::Some(x),
+                Parsed::Invalid => Parsed::Invalid,
+                Parsed::Missing => Parsed::Missing,
+                _ => Parsed::Invalid,
             })
             .collect();
         Column::Boolean(vs)
     }
 
-    fn as_int_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+    fn as_int_column(&self, values: Vec<Parsed<Value>>) -> Column {
         let vs = values
             .into_iter()
             .map(|v| match v {
-                ColumnValue::Some(Value::Int(x)) => ColumnValue::Some(x),
-                ColumnValue::Invalid => ColumnValue::Invalid,
-                ColumnValue::Missing => ColumnValue::Missing,
-                _ => ColumnValue::Invalid,
+                Parsed::Some(Value::Int(x)) => Parsed::Some(x),
+                Parsed::Invalid => Parsed::Invalid,
+                Parsed::Missing => Parsed::Missing,
+                _ => Parsed::Invalid,
             })
             .collect();
         Column::Int(vs)
     }
 
-    fn as_float_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+    fn as_float_column(&self, values: Vec<Parsed<Value>>) -> Column {
         let vs = values
             .into_iter()
             .map(|v| match v {
-                ColumnValue::Some(Value::Float(x)) => ColumnValue::Some(x),
-                ColumnValue::Invalid => ColumnValue::Invalid,
-                ColumnValue::Missing => ColumnValue::Missing,
-                _ => ColumnValue::Invalid,
+                Parsed::Some(Value::Float(x)) => Parsed::Some(x),
+                Parsed::Invalid => Parsed::Invalid,
+                Parsed::Missing => Parsed::Missing,
+                _ => Parsed::Invalid,
             })
             .collect();
         Column::Float(vs)
     }
 
-    fn as_text_column(&self, values: Vec<ColumnValue<Value>>) -> Column {
+    fn as_text_column(&self, values: Vec<Parsed<Value>>) -> Column {
         let vs = values
             .into_iter()
             .map(|v| match v {
-                ColumnValue::Some(Value::Text(x)) => ColumnValue::Some(x),
-                ColumnValue::Invalid => ColumnValue::Invalid,
-                ColumnValue::Missing => ColumnValue::Missing,
-                _ => ColumnValue::Invalid,
+                Parsed::Some(Value::Text(x)) => Parsed::Some(x),
+                Parsed::Invalid => Parsed::Invalid,
+                Parsed::Missing => Parsed::Missing,
+                _ => Parsed::Invalid,
             })
             .collect();
         Column::Text(vs)
@@ -104,45 +115,36 @@ impl DefaultTyper {
 }
 
 impl Typer for DefaultTyper {
-    type TypeTag = ValueType;
-    type TypedValue = Value;
-    type TypedColumn = Column;
+    type ColumnType = ColumnType;
+    type DatasetValue = Value;
+    type Column = Column;
 
-    const TYPES: &'static [Self::TypeTag] = &[
-        ValueType::Boolean,
-        ValueType::Int,
-        ValueType::Float,
-        ValueType::Text,
+    const COLUMN_TYPES: &'static [Self::ColumnType] = &[
+        ColumnType::Boolean,
+        ColumnType::Int,
+        ColumnType::Float,
+        ColumnType::Text,
     ];
 
-    fn type_value_as(&self, value: &RawValue, tag: Self::TypeTag) -> ColumnValue<Self::TypedValue> {
+    fn parse_as(&self, value: &RawValue, tag: Self::ColumnType) -> Parsed<Self::DatasetValue> {
         match tag {
-            ValueType::Boolean => self.as_bool(value),
-            ValueType::Int => self.as_int(value),
-            ValueType::Float => self.as_float(value),
-            ValueType::Text => ColumnValue::Some(self.as_text(value)),
+            ColumnType::Boolean => self.as_bool(value),
+            ColumnType::Int => self.as_int(value),
+            ColumnType::Float => self.as_float(value),
+            ColumnType::Text => Parsed::Some(self.as_text(value)),
         }
     }
 
-    fn tag_type(&self, value: &Self::TypedValue) -> ValueType {
-        match value {
-            Value::Boolean(_) => ValueType::Boolean,
-            Value::Int(_) => ValueType::Int,
-            Value::Float(_) => ValueType::Float,
-            Value::Text(_) => ValueType::Text,
-        }
-    }
-
-    fn type_column(
+    fn parse_column(
         &self,
-        tag: Self::TypeTag,
-        values: Vec<ColumnValue<Self::TypedValue>>,
-    ) -> Self::TypedColumn {
+        tag: Self::ColumnType,
+        values: Vec<Parsed<Self::DatasetValue>>,
+    ) -> Self::Column {
         match tag {
-            ValueType::Boolean => self.as_bool_column(values),
-            ValueType::Int => self.as_int_column(values),
-            ValueType::Float => self.as_float_column(values),
-            ValueType::Text => self.as_text_column(values),
+            ColumnType::Boolean => self.as_bool_column(values),
+            ColumnType::Int => self.as_int_column(values),
+            ColumnType::Float => self.as_float_column(values),
+            ColumnType::Text => self.as_text_column(values),
         }
     }
 }
@@ -170,8 +172,8 @@ mod tests {
         ];
         for (raw, expected) in values {
             assert_eq!(
-                DefaultTyper.type_value(&raw.into()),
-                ColumnValue::Some(Value::Boolean(expected)),
+                DefaultTyper.parse(&raw.into()),
+                Parsed::Some(Value::Boolean(expected)),
                 "{} failed the test",
                 raw
             );
@@ -183,8 +185,8 @@ mod tests {
         let values = vec![("4", 4), ("8", 8), ("-15", -15), ("23", 23), ("  42", 42)];
         for (raw, expected) in values {
             assert_eq!(
-                DefaultTyper.type_value(&raw.into()),
-                ColumnValue::Some(Value::Int(expected)),
+                DefaultTyper.parse(&raw.into()),
+                Parsed::Some(Value::Int(expected)),
                 "{} failed the test",
                 raw
             );
@@ -207,8 +209,8 @@ mod tests {
             ("-INF", f64::NEG_INFINITY),
         ];
         for (raw, expected) in values {
-            let determined = DefaultTyper.type_value(&raw.into());
-            let is_equal = if let ColumnValue::Some(Value::Float(parsed)) = determined {
+            let determined = DefaultTyper.parse(&raw.into());
+            let is_equal = if let Parsed::Some(Value::Float(parsed)) = determined {
                 parsed.is_nan() && expected.is_nan()
                     || parsed.partial_cmp(&expected) == Some(Ordering::Equal)
             } else {

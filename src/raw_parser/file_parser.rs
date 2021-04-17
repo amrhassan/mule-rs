@@ -1,5 +1,5 @@
 use super::line_parser::LineParser;
-use super::value_parser::ColumnValue;
+use super::value_parser::Parsed;
 use super::ParsingOptions;
 use crate::errors::Result;
 use crate::file;
@@ -10,13 +10,13 @@ use tokio_stream::StreamExt;
 
 pub async fn read_file_data<T: Typer>(
     file_path: impl AsRef<Path>,
-    schema: &[T::TypeTag],
+    schema: &[T::ColumnType],
     options: &ParsingOptions,
     line_count: usize,
     skip_first_line: bool,
     typer: &T,
-) -> Result<Vec<T::TypedColumn>> {
-    let mut data: Vec<Vec<ColumnValue<T::TypedValue>>> =
+) -> Result<Vec<T::Column>> {
+    let mut data: Vec<Vec<Parsed<T::DatasetValue>>> =
         vec![Vec::with_capacity(line_count); schema.len()];
     let lines_to_skip = if skip_first_line { 1 } else { 0 };
     let mut lines = file::read_lines(file_path).await?.skip(lines_to_skip);
@@ -24,14 +24,14 @@ pub async fn read_file_data<T: Typer>(
         let line = line_res?;
         let line_values = LineParser::new(line, options);
         for (col_ix, (value, column_type)) in line_values.zip(schema.iter()).enumerate() {
-            let column_value = typer.type_value_as(&value, *column_type);
+            let column_value = typer.parse_as(&value, *column_type);
             data[col_ix].push(column_value);
         }
     }
     let typed_data = data
         .into_iter()
         .zip(schema.iter())
-        .map(|(vals, tag)| typer.type_column(*tag, vals))
+        .map(|(vals, tag)| typer.parse_column(*tag, vals))
         .collect();
     Ok(typed_data)
 }

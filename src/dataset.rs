@@ -10,8 +10,8 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct Dataset<T: Typer> {
     pub column_names: Option<Vec<String>>,
-    pub schema: Vec<T::TypeTag>,
-    pub data: Vec<T::TypedColumn>,
+    pub schema: Vec<T::ColumnType>,
+    pub data: Vec<T::Column>,
     pub row_count: usize,
 }
 
