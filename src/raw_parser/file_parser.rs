@@ -1,7 +1,6 @@
-use super::line_parser::LineParser;
-use super::ParsingOptions;
 use crate::errors::Result;
 use crate::file;
+use crate::line_parsing::{LineParser, LineParsingOptions};
 use crate::schema::Schema;
 use crate::value_parsing::Parsed;
 use crate::Typer;
@@ -12,7 +11,7 @@ use tokio_stream::StreamExt;
 pub async fn read_file_data<T: Typer>(
     file_path: impl AsRef<Path>,
     schema: &Schema<T>,
-    options: &ParsingOptions,
+    options: &LineParsingOptions,
     line_count: usize,
     skip_first_line: bool,
     typer: &T,
@@ -41,7 +40,7 @@ pub async fn read_file_data<T: Typer>(
 
 pub async fn read_file_column_names(
     path: impl AsRef<Path>,
-    options: &ParsingOptions,
+    options: &LineParsingOptions,
 ) -> Result<Option<Vec<String>>> {
     let names = file::read_lines(path).await?.try_next().await?.map(|line| {
         let names = LineParser::new(line, options);
@@ -58,7 +57,7 @@ mod test {
 
     #[tokio::test]
     pub async fn test_read_colum_names_sales_100() -> Result<()> {
-        let options = ParsingOptions {
+        let options = LineParsingOptions {
             text_quote: "\"".to_string(),
             separator: ",".to_string(),
             text_quote_escape: "\\".to_string(),

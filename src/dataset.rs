@@ -1,7 +1,8 @@
 use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
 use crate::file;
-use crate::raw_parser::{read_file_column_names, read_file_data, ParsingOptions};
+use crate::line_parsing::LineParsingOptions;
+use crate::raw_parser::{read_file_column_names, read_file_data};
 use crate::schema::Schema;
 use crate::schema_inference::{infer_schema, infer_separator, SchemaInferenceDepth};
 use crate::typer::Typer;
@@ -41,7 +42,7 @@ impl<T: Typer> Dataset<T> {
             Separator::Infer => infer_separator(file_path.clone()).await?,
         };
 
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             text_quote: options.text_quote,
             text_quote_escape: options.text_quote_escape,
             separator,

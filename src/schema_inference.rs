@@ -1,5 +1,5 @@
 use crate::default_typer::DefaultTyper;
-use crate::raw_parser::{LineParser, ParsingOptions};
+use crate::line_parsing::{LineParser, LineParsingOptions};
 use crate::schema::Schema;
 use crate::typer::{DatasetValue, Typer};
 use crate::value_parsing::Parsed;
@@ -51,7 +51,7 @@ impl Default for SchemaInferenceDepth {
 pub async fn infer_file_schema(
     file_path: impl AsRef<Path> + Clone,
     inference_depth: &SchemaInferenceDepth,
-    parsing_options: &ParsingOptions,
+    parsing_options: &LineParsingOptions,
 ) -> Result<Schema<DefaultTyper>> {
     let typer = DefaultTyper::default();
     let skip_header = true;
@@ -72,7 +72,7 @@ pub async fn infer_schema<T: Typer>(
     file_path: impl AsRef<Path>,
     skip_header: bool,
     inference_depth: &SchemaInferenceDepth,
-    parsing_options: &ParsingOptions,
+    parsing_options: &LineParsingOptions,
     typer: T,
 ) -> Result<Schema<T>> {
     let lines_to_skip = if skip_header { 1 } else { 0 };
@@ -139,7 +139,7 @@ mod test {
     #[tokio::test]
     pub async fn test_infer_column_types_sales_100() -> Result<()> {
         let typer = DefaultTyper::default();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),

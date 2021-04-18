@@ -1,6 +1,6 @@
 use std::env;
 
-use mule::{infer_file_schema, ParsingOptions, Result, SchemaInferenceDepth};
+use mule::{infer_file_schema, LineParsingOptions, Result, SchemaInferenceDepth};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
@@ -8,7 +8,7 @@ pub async fn main() -> Result<()> {
     let schema = infer_file_schema(
         file_path,
         &SchemaInferenceDepth::default(),
-        &ParsingOptions::default(),
+        &LineParsingOptions::default(),
     )
     .await?;
 

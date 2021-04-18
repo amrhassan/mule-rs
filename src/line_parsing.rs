@@ -1,16 +1,31 @@
-use super::ParsingOptions;
 use crate::value_parsing::RawValue;
 use derive_more::From;
+
+pub struct LineParsingOptions {
+    pub separator: String,
+    pub text_quote: String,
+    pub text_quote_escape: String,
+}
+
+impl Default for LineParsingOptions {
+    fn default() -> Self {
+        LineParsingOptions {
+            separator: ",".to_string(),
+            text_quote: "\"".to_string(),
+            text_quote_escape: "\\".to_string(),
+        }
+    }
+}
 
 /// An iterator over a line from a CSV file that yields [[RawValue]] instances.
 pub struct LineParser<'a> {
     line: String,
-    options: &'a ParsingOptions,
+    options: &'a LineParsingOptions,
     next_start: usize,
 }
 
 impl<'a> LineParser<'a> {
-    pub fn new(line: String, options: &'a ParsingOptions) -> LineParser<'a> {
+    pub fn new(line: String, options: &'a LineParsingOptions) -> LineParser<'a> {
         LineParser {
             line,
             options,
@@ -108,7 +123,7 @@ impl<'a> From<UnquotedRawValue<'a>> for RawValue {
 
 struct QuotedRawValue<'a> {
     raw: &'a str,
-    options: &'a ParsingOptions,
+    options: &'a LineParsingOptions,
 }
 
 impl<'a> From<QuotedRawValue<'a>> for RawValue {
@@ -126,7 +141,7 @@ impl<'a> From<QuotedRawValue<'a>> for RawValue {
 }
 
 impl<'a> QuotedRawValue<'a> {
-    fn new(raw: &'a str, options: &'a ParsingOptions) -> QuotedRawValue<'a> {
+    fn new(raw: &'a str, options: &'a LineParsingOptions) -> QuotedRawValue<'a> {
         QuotedRawValue { raw, options }
     }
 }
@@ -139,7 +154,7 @@ mod tests {
     #[test]
     fn test_line_values_1() {
         let line = "first, second,,three,4,,,".to_string();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
@@ -157,7 +172,7 @@ mod tests {
     #[test]
     fn test_line_values_2() {
         let line = "first, second,,three,4,,,five".to_string();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
@@ -175,7 +190,7 @@ mod tests {
     #[test]
     fn test_line_values_3() {
         let line = "first,, second,,,,three,,4,,,,,,".to_string();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",,".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
@@ -193,7 +208,7 @@ mod tests {
     #[test]
     fn test_line_values_4() {
         let line = "first, second,,three,4,\"\",,five".to_string();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
@@ -211,7 +226,7 @@ mod tests {
     #[test]
     fn test_line_values_5() {
         let line = "first, \"second point five\",,three,4,\"\",,five".to_string();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
@@ -236,7 +251,7 @@ mod tests {
     #[test]
     fn test_line_values_6() {
         let line = "first, \"second \\\" point five\",,three,4,\"\",,five".to_string();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
@@ -261,7 +276,7 @@ mod tests {
     #[test]
     fn test_line_values_7() {
         let line = "first, \"second \\\" \\\" point five\",,three,4,\"\",,five".to_string();
-        let parsing_options = ParsingOptions {
+        let parsing_options = LineParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
