@@ -1,5 +1,5 @@
-use crate::raw_parser::{Parsed, RawValue, ValueParser};
 use crate::typer::{DatasetValue, Typer};
+use crate::value_parsing::{Parsed, RawValue};
 use derive_more::Display;
 
 /// Fully typed value
@@ -60,15 +60,15 @@ pub struct DefaultTyper;
 
 impl DefaultTyper {
     fn as_int(&self, value: &RawValue) -> Parsed<Value> {
-        value.parse_csv().map(Value::Int)
+        value.parse_i64().map(Value::Int)
     }
 
     fn as_float(&self, value: &RawValue) -> Parsed<Value> {
-        value.parse_csv().map(Value::Float)
+        value.parse_f64().map(Value::Float)
     }
 
     fn as_bool(&self, value: &RawValue) -> Parsed<Value> {
-        value.parse_csv().map(Value::Boolean)
+        value.parse_bool().map(Value::Boolean)
     }
 
     fn as_text(&self, value: &RawValue) -> Value {

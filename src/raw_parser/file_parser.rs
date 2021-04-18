@@ -1,9 +1,9 @@
 use super::line_parser::LineParser;
-use super::value_parser::Parsed;
 use super::ParsingOptions;
 use crate::errors::Result;
 use crate::file;
 use crate::schema::Schema;
+use crate::value_parsing::Parsed;
 use crate::Typer;
 use itertools::Itertools;
 use std::path::Path;

@@ -1,4 +1,4 @@
-use super::raw_parser::{Parsed, RawValue};
+use crate::value_parsing::{Parsed, RawValue};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 

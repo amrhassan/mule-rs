@@ -1,7 +1,8 @@
 use crate::default_typer::DefaultTyper;
-use crate::raw_parser::{LineParser, Parsed, ParsingOptions};
+use crate::raw_parser::{LineParser, ParsingOptions};
 use crate::schema::Schema;
 use crate::typer::{DatasetValue, Typer};
+use crate::value_parsing::Parsed;
 use crate::{errors::Result, file};
 use itertools::Itertools;
 use maplit::hashmap;

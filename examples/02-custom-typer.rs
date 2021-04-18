@@ -1,5 +1,5 @@
 use derive_more::Display;
-use mule::{Dataset, DatasetValue, Parsed, RawValue, ReadingOptions, Result, Typer, ValueParser};
+use mule::{Dataset, DatasetValue, Parsed, RawValue, ReadingOptions, Result, Typer};
 use std::env;
 
 #[tokio::main]
@@ -78,11 +78,11 @@ pub struct CustomTyper;
 
 impl CustomTyper {
     fn as_int(&self, value: &RawValue) -> Parsed<CustomValue> {
-        value.parse_csv().map(CustomValue::Int)
+        value.parse_i64().map(CustomValue::Int)
     }
 
     fn as_float(&self, value: &RawValue) -> Parsed<CustomValue> {
-        value.parse_csv().map(CustomValue::Float)
+        value.parse_f64().map(CustomValue::Float)
     }
 
     fn as_text(&self, value: &RawValue) -> CustomValue {

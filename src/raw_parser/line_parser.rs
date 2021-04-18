@@ -1,5 +1,5 @@
-use super::value::RawValue;
 use super::ParsingOptions;
+use crate::value_parsing::RawValue;
 use derive_more::From;
 
 /// An iterator over a line from a CSV file that yields [[RawValue]] instances.
