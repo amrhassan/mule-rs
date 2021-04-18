@@ -123,7 +123,7 @@ impl Default for ReadingOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Column, ColumnType};
+    use crate::{ColumnType, CC};
     use itertools::Itertools;
 
     #[tokio::test]
@@ -185,11 +185,11 @@ mod tests {
 
         for column in data {
             let all_good = match &column {
-                Column::Boolean(vs) => vs.iter().all(|v| v.is_some()),
-                Column::Int(vs) => vs.iter().all(|v| v.is_some()),
-                Column::Float(vs) => vs.iter().all(|v| v.is_some()),
-                Column::Text(vs) => vs.iter().all(|v| v.is_some()),
-                Column::Unknown => panic!(),
+                CC::Boolean(vs) => vs.iter().all(|v| v.is_some()),
+                CC::Int(vs) => vs.iter().all(|v| v.is_some()),
+                CC::Float(vs) => vs.iter().all(|v| v.is_some()),
+                CC::Text(vs) => vs.iter().all(|v| v.is_some()),
+                CC::Unknown => panic!(),
             };
             assert!(all_good, "The column has invalid values! {:?}", column)
         }

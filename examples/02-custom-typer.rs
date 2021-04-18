@@ -73,7 +73,7 @@ impl Default for CustomColumn {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct CustomTyper;
 
 impl CustomTyper {

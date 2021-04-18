@@ -14,8 +14,9 @@ mod schema_inference;
 mod typer;
 mod value_parsing;
 
+pub use column_parsing::{Column, Columns};
 pub use dataset::{read_file, Dataset, ReadingOptions, Separator, TypedDataset};
-pub use default_typer::{Column, ColumnType, DefaultTyper, Value};
+pub use default_typer::{Column as CC, ColumnType, DefaultTyper, Value};
 pub use errors::Result;
 pub use line_parsing::LineParsingOptions;
 pub use schema::{Schema, SchemaInferenceDepth};

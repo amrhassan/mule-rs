@@ -55,7 +55,7 @@ impl Default for Column {
 }
 
 /// Default typing scheme
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct DefaultTyper;
 
 impl DefaultTyper {
