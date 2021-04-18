@@ -4,9 +4,8 @@ use crate::errors::Result;
 use crate::file;
 use crate::header_parsing::Header;
 use crate::line_parsing::LineParsingOptions;
-use crate::schema::Schema;
-use crate::schema::SchemaInferenceDepth;
-use crate::schema_inference::infer_separator;
+use crate::schema::{Schema, SchemaInferenceDepth};
+use crate::separator_inference::infer_separator;
 use crate::typer::Typer;
 use std::path::Path;
 
@@ -93,7 +92,7 @@ impl Default for ReadingOptions {
     fn default() -> Self {
         ReadingOptions {
             read_header: true,
-            schema_inference_depth: SchemaInferenceDepth::Percentage(0.01),
+            schema_inference_depth: SchemaInferenceDepth::default(),
             separator: Separator::Infer,
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),

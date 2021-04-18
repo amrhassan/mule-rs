@@ -4,21 +4,21 @@
 mod column_parsing;
 mod dataset;
 mod default_typer;
+mod defaults;
 mod errors;
 mod file;
 mod header_parsing;
 mod line_parsing;
 mod schema;
 mod schema_inference;
-mod typer;
-mod defaults;
-mod value_parsing;
 mod separator_inference;
+mod typer;
+mod value_parsing;
 
-pub use defaults::read_file;
 pub use column_parsing::{Column, Columns};
 pub use dataset::{Dataset, ReadingOptions, Separator, TypedDataset};
 pub use default_typer::{Column as CC, ColumnType, DefaultTyper, Value};
+pub use defaults::read_file;
 pub use errors::Result;
 pub use line_parsing::LineParsingOptions;
 pub use schema::{Schema, SchemaInferenceDepth};
