@@ -38,22 +38,6 @@ impl Default for ColumnType {
     }
 }
 
-/// Column of typed values
-#[derive(Clone, Debug, PartialEq)]
-pub enum Column {
-    Boolean(Vec<Parsed<bool>>),
-    Int(Vec<Parsed<i64>>),
-    Float(Vec<Parsed<f64>>),
-    Text(Vec<Parsed<String>>),
-    Unknown,
-}
-
-impl Default for Column {
-    fn default() -> Self {
-        Column::Unknown
-    }
-}
-
 /// Default typing scheme
 #[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct DefaultTyper;
@@ -74,64 +58,11 @@ impl DefaultTyper {
     fn as_text(&self, value: &RawValue) -> Value {
         Value::Text(value.0.to_string())
     }
-
-    fn as_bool_column(&self, values: Vec<Parsed<Value>>) -> Column {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(Value::Boolean(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        Column::Boolean(vs)
-    }
-
-    fn as_int_column(&self, values: Vec<Parsed<Value>>) -> Column {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(Value::Int(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        Column::Int(vs)
-    }
-
-    fn as_float_column(&self, values: Vec<Parsed<Value>>) -> Column {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(Value::Float(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        Column::Float(vs)
-    }
-
-    fn as_text_column(&self, values: Vec<Parsed<Value>>) -> Column {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(Value::Text(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        Column::Text(vs)
-    }
 }
 
 impl Typer for DefaultTyper {
     type ColumnType = ColumnType;
     type DatasetValue = Value;
-    type Column = Column;
 
     const COLUMN_TYPES: &'static [Self::ColumnType] = &[
         ColumnType::Boolean,
@@ -147,20 +78,6 @@ impl Typer for DefaultTyper {
             ColumnType::Float => self.as_float(value),
             ColumnType::Text => Parsed::Some(self.as_text(value)),
             ColumnType::Unknown => Parsed::Invalid,
-        }
-    }
-
-    fn parse_column(
-        &self,
-        tag: Self::ColumnType,
-        values: Vec<Parsed<Self::DatasetValue>>,
-    ) -> Self::Column {
-        match tag {
-            ColumnType::Boolean => self.as_bool_column(values),
-            ColumnType::Int => self.as_int_column(values),
-            ColumnType::Float => self.as_float_column(values),
-            ColumnType::Text => self.as_text_column(values),
-            ColumnType::Unknown => Self::Column::default(),
         }
     }
 }

@@ -58,21 +58,6 @@ impl Default for CustomColumnType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum CustomColumn {
-    Maybe(Vec<Parsed<YayNay>>),
-    Int(Vec<Parsed<i64>>),
-    Float(Vec<Parsed<f64>>),
-    Text(Vec<Parsed<String>>),
-    Unknown,
-}
-
-impl Default for CustomColumn {
-    fn default() -> Self {
-        CustomColumn::Unknown
-    }
-}
-
 #[derive(Default, Debug, Clone)]
 pub struct CustomTyper;
 
@@ -97,64 +82,11 @@ impl CustomTyper {
             _ => Parsed::Invalid,
         }
     }
-
-    fn as_maybe_column(&self, values: Vec<Parsed<CustomValue>>) -> CustomColumn {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(CustomValue::Maybe(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        CustomColumn::Maybe(vs)
-    }
-
-    fn as_int_column(&self, values: Vec<Parsed<CustomValue>>) -> CustomColumn {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(CustomValue::Int(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        CustomColumn::Int(vs)
-    }
-
-    fn as_float_column(&self, values: Vec<Parsed<CustomValue>>) -> CustomColumn {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(CustomValue::Float(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        CustomColumn::Float(vs)
-    }
-
-    fn as_text_column(&self, values: Vec<Parsed<CustomValue>>) -> CustomColumn {
-        let vs = values
-            .into_iter()
-            .map(|v| match v {
-                Parsed::Some(CustomValue::Text(x)) => Parsed::Some(x),
-                Parsed::Invalid => Parsed::Invalid,
-                Parsed::Missing => Parsed::Missing,
-                _ => Parsed::Invalid,
-            })
-            .collect();
-        CustomColumn::Text(vs)
-    }
 }
 
 impl Typer for CustomTyper {
     type ColumnType = CustomColumnType;
     type DatasetValue = CustomValue;
-    type Column = CustomColumn;
 
     const COLUMN_TYPES: &'static [Self::ColumnType] = &[
         CustomColumnType::Maybe,
@@ -170,20 +102,6 @@ impl Typer for CustomTyper {
             CustomColumnType::Float => self.as_float(value),
             CustomColumnType::Text => Parsed::Some(self.as_text(value)),
             CustomColumnType::Unknown => Parsed::Invalid,
-        }
-    }
-
-    fn parse_column(
-        &self,
-        tag: Self::ColumnType,
-        values: Vec<Parsed<Self::DatasetValue>>,
-    ) -> Self::Column {
-        match tag {
-            CustomColumnType::Maybe => self.as_maybe_column(values),
-            CustomColumnType::Int => self.as_int_column(values),
-            CustomColumnType::Float => self.as_float_column(values),
-            CustomColumnType::Text => self.as_text_column(values),
-            CustomColumnType::Unknown => Self::Column::default(),
         }
     }
 }
