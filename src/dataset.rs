@@ -1,12 +1,12 @@
+use crate::column_parsing::Columns;
 use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
 use crate::file;
 use crate::header_parsing::Header;
 use crate::line_parsing::LineParsingOptions;
-use crate::raw_parser::read_file_data;
 use crate::schema::Schema;
 use crate::schema::SchemaInferenceDepth;
-use crate::schema_inference::{infer_schema, infer_separator};
+use crate::schema_inference::infer_separator;
 use crate::typer::Typer;
 use std::path::Path;
 
@@ -15,16 +15,7 @@ use std::path::Path;
 pub struct Dataset<T: Typer> {
     pub header: Option<Header>,
     pub schema: Schema<T>,
-    pub data: Vec<T::Column>,
-    pub row_count: usize,
-}
-
-/// Opens and reads the dataset at the specified file using the default options and type system.
-pub async fn read_file(file_path: impl AsRef<Path> + Clone) -> Result<Dataset<DefaultTyper>> {
-    let typer = DefaultTyper::default();
-    let options = ReadingOptions::default();
-    let ds = Dataset::read_file(file_path, options, &typer).await?;
-    Ok(ds)
+    pub columns: Columns<T>,
 }
 
 impl<T: Typer> Dataset<T> {
@@ -34,10 +25,6 @@ impl<T: Typer> Dataset<T> {
         typer: &T,
     ) -> Result<Dataset<T>> {
         let line_count = file::count_lines(file_path.clone()).await?;
-        let schema_inference_line_count = match options.schema_inference_depth {
-            SchemaInferenceDepth::Lines(n) => n,
-            SchemaInferenceDepth::Percentage(x) => (x.min(1.0) * line_count as f64).ceil() as usize,
-        };
 
         let separator = match options.separator {
             Separator::Value(value) => value,
@@ -56,36 +43,30 @@ impl<T: Typer> Dataset<T> {
             None
         };
 
-        let skip_first_line = header.is_some();
-        let row_count = if skip_first_line {
-            line_count - 1
-        } else {
-            line_count
-        };
-        let schema = infer_schema(
+        let skip_first_line = options.read_header;
+        let schema = Schema::infer(
             &file_path,
             skip_first_line,
-            &SchemaInferenceDepth::Lines(schema_inference_line_count),
+            &options.schema_inference_depth,
             &parsing_options,
-            T::default(),
+            typer,
         )
         .await?;
 
-        let data = read_file_data(
+        let columns = Columns::parse(
             &file_path,
             &schema,
             &parsing_options,
             line_count,
             skip_first_line,
-            typer,
+            &typer,
         )
         .await?;
 
         Ok(Dataset {
             header,
             schema,
-            row_count,
-            data,
+            columns,
         })
     }
 }
@@ -123,7 +104,7 @@ impl Default for ReadingOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ColumnType, CC};
+    use crate::ColumnType;
     use itertools::Itertools;
 
     #[tokio::test]
@@ -134,7 +115,7 @@ mod tests {
 
         let schema = dataset.schema;
         let header = dataset.header;
-        let data = dataset.data;
+        let columns = dataset.columns;
 
         let expected_schema = Schema {
             column_types: vec![
@@ -181,16 +162,10 @@ mod tests {
         assert_eq!(schema.column_types.len(), 14);
         assert_eq!(header, expected_header);
         assert_eq!(header.map(|h| h.column_names.len()), Some(14));
-        assert_eq!(data.len(), 14);
+        assert_eq!(columns.columns.len(), 14);
 
-        for column in data {
-            let all_good = match &column {
-                CC::Boolean(vs) => vs.iter().all(|v| v.is_some()),
-                CC::Int(vs) => vs.iter().all(|v| v.is_some()),
-                CC::Float(vs) => vs.iter().all(|v| v.is_some()),
-                CC::Text(vs) => vs.iter().all(|v| v.is_some()),
-                CC::Unknown => panic!(),
-            };
+        for column in columns.columns {
+            let all_good = column.values.iter().all(|v| v.is_some());
             assert!(all_good, "The column has invalid values! {:?}", column)
         }
 

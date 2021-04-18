@@ -20,7 +20,7 @@ impl<T: Typer> Schema<T> {
         skip_header: bool,
         inference_depth: &SchemaInferenceDepth,
         parsing_options: &LineParsingOptions,
-        typer: T,
+        typer: &T,
     ) -> Result<Schema<T>> {
         let lines_to_skip = if skip_header { 1 } else { 0 };
 
@@ -77,6 +77,12 @@ pub enum SchemaInferenceDepth {
     Lines(usize),
 }
 
+impl Default for SchemaInferenceDepth {
+    fn default() -> Self {
+        SchemaInferenceDepth::Percentage(0.1)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -93,7 +99,7 @@ mod test {
             skip_first_line,
             &schema_inference_depth,
             &parsing_options,
-            typer,
+            &typer,
         )
         .await?;
 

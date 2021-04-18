@@ -20,7 +20,7 @@ impl<T: Typer> Column<T> {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Columns<T: Typer> {
     pub columns: Vec<Column<T>>,
 }
