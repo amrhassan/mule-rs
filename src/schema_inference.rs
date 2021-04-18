@@ -1,6 +1,6 @@
 use crate::default_typer::DefaultTyper;
 use crate::line_parsing::{LineParser, LineParsingOptions};
-use crate::schema::Schema;
+use crate::schema::{Schema, SchemaInferenceDepth};
 use crate::typer::{DatasetValue, Typer};
 use crate::value_parsing::Parsed;
 use crate::{errors::Result, file};
@@ -30,15 +30,6 @@ pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
         .map(|(k, _)| k)
         .unwrap_or(",");
     Ok(sep.to_string())
-}
-
-/// Number of lines to read while inferring the dataset schema
-#[derive(Copy, Clone, Debug)]
-pub enum SchemaInferenceDepth {
-    /// Percentage of total number of lines
-    Percentage(f32),
-    /// Absolute number of lines
-    Lines(usize),
 }
 
 impl Default for SchemaInferenceDepth {
@@ -80,7 +71,7 @@ pub async fn infer_schema<T: Typer>(
         SchemaInferenceDepth::Lines(n) => *n,
         SchemaInferenceDepth::Percentage(percentage) => {
             let line_count = file::count_lines(&file_path).await?;
-            ((*percentage).min(1.0) * (line_count as f32)).ceil() as usize
+            ((*percentage).min(1.0) * (line_count as f64)).ceil() as usize
         }
     };
 
@@ -122,7 +113,6 @@ pub async fn infer_schema<T: Typer>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ColumnType, DefaultTyper};
 
     #[tokio::test]
     pub async fn test_separator_inference() -> Result<()> {
@@ -132,47 +122,6 @@ mod test {
             infer_separator("datasets/sales-100.csv").await.unwrap(),
             ","
         );
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    pub async fn test_infer_column_types_sales_100() -> Result<()> {
-        let typer = DefaultTyper::default();
-        let parsing_options = LineParsingOptions {
-            separator: ",".to_string(),
-            text_quote: "\"".to_string(),
-            text_quote_escape: "\\".to_string(),
-        };
-        let schema = infer_schema(
-            "datasets/sales-100.csv",
-            true,
-            &SchemaInferenceDepth::Percentage(0.1),
-            &parsing_options,
-            typer,
-        )
-        .await?;
-
-        let expected_schema = Schema::<DefaultTyper> {
-            column_types: vec![
-                ColumnType::Text,
-                ColumnType::Text,
-                ColumnType::Text,
-                ColumnType::Text,
-                ColumnType::Text,
-                ColumnType::Text,
-                ColumnType::Int,
-                ColumnType::Text,
-                ColumnType::Int,
-                ColumnType::Float,
-                ColumnType::Float,
-                ColumnType::Float,
-                ColumnType::Float,
-                ColumnType::Float,
-            ],
-        };
-
-        assert_eq!(schema, expected_schema);
 
         Ok(())
     }

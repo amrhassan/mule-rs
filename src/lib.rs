@@ -1,6 +1,7 @@
 #![deny(warnings)]
 #![deny(clippy::all)]
 
+mod column_parsing;
 mod dataset;
 mod default_typer;
 mod errors;
@@ -17,7 +18,7 @@ pub use dataset::{read_file, Dataset, ReadingOptions, Separator, TypedDataset};
 pub use default_typer::{Column, ColumnType, DefaultTyper, Value};
 pub use errors::Result;
 pub use line_parsing::LineParsingOptions;
-pub use schema::Schema;
-pub use schema_inference::{infer_file_schema, SchemaInferenceDepth};
+pub use schema::{Schema, SchemaInferenceDepth};
+pub use schema_inference::infer_file_schema;
 pub use typer::{DatasetValue, Typer};
 pub use value_parsing::{Parsed, RawValue};

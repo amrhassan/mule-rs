@@ -10,7 +10,7 @@ use tokio_stream::StreamExt;
 pub async fn read_file_data<T: Typer>(
     file_path: impl AsRef<Path>,
     schema: &Schema<T>,
-    options: &LineParsingOptions,
+    parsing_options: &LineParsingOptions,
     line_count: usize,
     skip_first_line: bool,
     typer: &T,
@@ -21,7 +21,7 @@ pub async fn read_file_data<T: Typer>(
     let mut lines = file::read_lines(file_path).await?.skip(lines_to_skip);
     while let Some(line_res) = lines.next().await {
         let line = line_res?;
-        let line_values = LineParser::new(line, options);
+        let line_values = LineParser::new(line, parsing_options);
         for (col_ix, (value, column_type)) in
             line_values.zip(schema.column_types.iter()).enumerate()
         {

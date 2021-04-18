@@ -5,7 +5,8 @@ use crate::header_parsing::Header;
 use crate::line_parsing::LineParsingOptions;
 use crate::raw_parser::read_file_data;
 use crate::schema::Schema;
-use crate::schema_inference::{infer_schema, infer_separator, SchemaInferenceDepth};
+use crate::schema::SchemaInferenceDepth;
+use crate::schema_inference::{infer_schema, infer_separator};
 use crate::typer::Typer;
 use std::path::Path;
 
@@ -35,7 +36,7 @@ impl<T: Typer> Dataset<T> {
         let line_count = file::count_lines(file_path.clone()).await?;
         let schema_inference_line_count = match options.schema_inference_depth {
             SchemaInferenceDepth::Lines(n) => n,
-            SchemaInferenceDepth::Percentage(x) => (x.min(1.0) * line_count as f32).ceil() as usize,
+            SchemaInferenceDepth::Percentage(x) => (x.min(1.0) * line_count as f64).ceil() as usize,
         };
 
         let separator = match options.separator {
