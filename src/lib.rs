@@ -5,6 +5,7 @@ mod dataset;
 mod default_typer;
 mod errors;
 mod file;
+mod header_parsing;
 mod line_parsing;
 mod raw_parser;
 mod schema;
