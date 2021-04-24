@@ -7,7 +7,6 @@ mod dataset_file;
 mod default_typer;
 mod defaults;
 mod errors;
-mod file;
 mod header_parsing;
 mod line_parsing;
 mod schema;

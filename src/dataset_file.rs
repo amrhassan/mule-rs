@@ -59,7 +59,7 @@ impl DatasetFile {
             return vec![LineBatch {
                 file_path: self.path.clone(),
                 skip_lines: lines_to_skip,
-                take_lines: 0,
+                take_lines: lines_to_read,
             }];
         }
 
@@ -67,10 +67,8 @@ impl DatasetFile {
             .chunks(batch_size)
             .into_iter()
             .map(|mut chunk| {
-                let start_inc = chunk.next().unwrap_or(0);
-                let stop_inc = chunk.last().unwrap_or(start_inc);
-                let skip_lines = start_inc;
-                let take_lines = stop_inc - start_inc;
+                let skip_lines = chunk.next().unwrap_or(0);
+                let take_lines = chunk.last().unwrap_or(1);
                 LineBatch {
                     file_path: self.path.clone(),
                     skip_lines,
@@ -82,6 +80,7 @@ impl DatasetFile {
 }
 
 /// A batch of lines from a local file
+#[derive(Debug)]
 pub struct LineBatch {
     file_path: PathBuf,
     skip_lines: usize,

@@ -22,13 +22,12 @@ impl<T: Typer> Column<T> {
         }
     }
 
-    fn merged_with(self, rhs: Self) -> Self {
-        let values = self
-            .values
-            .into_iter()
-            .chain(rhs.values.into_iter())
-            .collect();
-        Column { values }
+    fn extend(&mut self, rhs: Self) {
+        self.values.extend(rhs.values)
+    }
+
+    fn empty() -> Self {
+        Column { values: vec![] }
     }
 }
 
@@ -44,14 +43,17 @@ impl<T: Typer> Columns<T> {
         }
     }
 
-    fn merged_with(self, rhs: Self) -> Self {
-        let columns = self
-            .columns
-            .into_iter()
-            .zip(rhs.columns.into_iter())
-            .map(|(lhs, rhs)| lhs.merged_with(rhs))
-            .collect();
-        Columns { columns }
+    fn extend(&mut self, rhs: Self) {
+        for (col_ix, rhs_col) in rhs.columns.into_iter().enumerate() {
+            let lhs_col = match self.columns.get_mut(col_ix) {
+                Some(col) => col,
+                None => {
+                    self.columns.push(Column::empty());
+                    &mut self.columns[col_ix]
+                }
+            };
+            lhs_col.extend(rhs_col)
+        }
     }
 }
 
@@ -84,7 +86,7 @@ impl<T: Typer> Columns<T> {
 
         let mut columns = Columns::default();
         for one_batch_columns in batch_columns.into_iter() {
-            columns = columns.merged_with(one_batch_columns?);
+            columns.extend(one_batch_columns?)
         }
 
         Ok(columns)
