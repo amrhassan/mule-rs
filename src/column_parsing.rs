@@ -1,5 +1,5 @@
+use crate::dataset_file::DatasetFile;
 use crate::errors::Result;
-use crate::file;
 use crate::line_parsing::{LineParser, LineParsingOptions};
 use crate::schema::Schema;
 use crate::value_parsing::Parsed;
@@ -47,7 +47,8 @@ impl<T: Typer> Columns<T> {
         let mut columns: Columns<T> =
             Columns::new(schema.column_types.len(), line_count - lines_to_skip);
 
-        let mut lines = file::read_lines(file_path).await?.skip(lines_to_skip);
+        let file = DatasetFile::new(&file_path);
+        let mut lines = file.read_lines().await?.skip(lines_to_skip);
         let mut row_ix = 0;
 
         while let Some(line_res) = lines.next().await {

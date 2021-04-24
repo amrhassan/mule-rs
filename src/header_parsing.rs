@@ -1,5 +1,5 @@
+use crate::dataset_file::DatasetFile;
 use crate::errors::Result;
-use crate::file;
 use crate::line_parsing::{LineParser, LineParsingOptions};
 use itertools::Itertools;
 use std::path::Path;
@@ -15,7 +15,8 @@ impl Header {
         path: impl AsRef<Path>,
         options: &LineParsingOptions,
     ) -> Result<Option<Header>> {
-        let header = file::read_lines(path)
+        let header = DatasetFile::new(path)
+            .read_lines()
             .await?
             .try_next()
             .await?

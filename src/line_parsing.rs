@@ -1,6 +1,7 @@
 use crate::value_parsing::RawValue;
 use derive_more::From;
 
+#[derive(Clone)]
 pub struct LineParsingOptions {
     pub separator: String,
     pub text_quote: String,

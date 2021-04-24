@@ -3,6 +3,7 @@
 
 mod column_parsing;
 mod dataset;
+mod dataset_file;
 mod default_typer;
 mod defaults;
 mod errors;

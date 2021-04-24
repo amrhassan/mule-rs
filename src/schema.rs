@@ -1,8 +1,8 @@
-use crate::file;
+use crate::dataset_file::DatasetFile;
+use crate::errors::Result;
 use crate::line_parsing::{LineParser, LineParsingOptions};
 use crate::typer::{DatasetValue, Typer};
 use crate::value_parsing::Parsed;
-use crate::{errors::Result, file::LineBatch};
 use futures_core::TryStream;
 use itertools::Itertools;
 use maplit::hashmap;
@@ -10,6 +10,7 @@ use rayon::current_num_threads;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;
+use tokio::task;
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,29 +20,34 @@ pub struct Schema<T: Typer> {
 
 impl<T: Typer + Send + Sync> Schema<T> {
     pub async fn infer(
-        file_path: impl AsRef<Path> + Clone,
+        file_path: impl AsRef<Path>,
         skip_header: bool,
         inference_depth: &SchemaInferenceDepth,
         parsing_options: &LineParsingOptions,
         typer: &T,
     ) -> Result<Schema<T>> {
-        let lines_to_skip = if skip_header { 1 } else { 0 };
-
         let lines_to_read = match inference_depth {
             SchemaInferenceDepth::Lines(n) => *n,
             SchemaInferenceDepth::Percentage(percentage) => {
-                let line_count = file::count_lines(&file_path).await?;
+                let line_count = DatasetFile::new(&file_path).count_lines().await?;
                 ((*percentage).min(1.0) * (line_count as f64)).ceil() as usize
             }
         };
 
-        let column_type_counts = count_file_column_types_blocking(
-            &file_path,
-            lines_to_skip,
-            lines_to_read,
-            parsing_options,
-            typer,
-        )?;
+        let own_file_path = file_path.as_ref().to_owned();
+        let own_typer = typer.clone();
+        let own_parsing_options = parsing_options.clone();
+        let column_type_counts = task::spawn_blocking(move || {
+            count_file_column_types_blocking(
+                own_file_path,
+                skip_header,
+                lines_to_read,
+                &own_parsing_options,
+                &own_typer,
+            )
+        })
+        .await
+        .expect("Failed to join on a blocking task")?;
 
         let column_types = column_type_counts
             .0
@@ -62,17 +68,14 @@ impl<T: Typer + Send + Sync> Schema<T> {
 
 fn count_file_column_types_blocking<T: Typer + Send + Sync>(
     file_path: impl AsRef<Path> + Clone + Sized,
-    lines_to_skip: usize,
+    skip_header: bool,
     lines_to_read: usize,
     parsing_options: &LineParsingOptions,
     typer: &T,
 ) -> Result<ColumnTypeCounts<T>> {
-    let line_batches = LineBatch::prepare_line_batches(
-        file_path,
-        lines_to_skip,
-        lines_to_read,
-        current_num_threads(),
-    );
+    let batch_count = current_num_threads();
+    let dataset_file = DatasetFile::new(file_path);
+    let line_batches = dataset_file.batches(skip_header, lines_to_read, batch_count);
 
     let batch_column_type_counts: Vec<Result<ColumnTypeCounts<T>>> = line_batches
         .into_par_iter()

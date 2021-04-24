@@ -1,4 +1,5 @@
-use crate::{errors::Result, file};
+use crate::dataset_file::DatasetFile;
+use crate::errors::Result;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::Path;
@@ -9,7 +10,7 @@ static COMMON_SEPARATORS: [&str; 3] = [",", "\t", "|"];
 /// Infer the separator as the most commonly used separator in the file
 pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
     let mut counts: HashMap<&str, usize> = HashMap::default();
-    let mut lines = file::read_lines(path).await?;
+    let mut lines = DatasetFile::new(path).read_lines().await?;
     while let Some(line_res) = lines.next().await {
         let line = line_res?;
         for sep in COMMON_SEPARATORS.iter() {

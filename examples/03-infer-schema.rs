@@ -6,7 +6,7 @@ use mule::{DefaultTyper, LineParsingOptions, Result, Schema, SchemaInferenceDept
 pub async fn main() -> Result<()> {
     let file_path = env::args().skip(1).next().expect("Missing argument");
     let skip_header = true;
-    let inference_depth = SchemaInferenceDepth::Percentage(0.5);
+    let inference_depth = SchemaInferenceDepth::Percentage(1.0);
     let parsing_options = LineParsingOptions::default();
     let typer = DefaultTyper;
     let schema = Schema::infer(
