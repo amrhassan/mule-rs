@@ -17,7 +17,7 @@ pub struct Dataset<T: Typer> {
     pub columns: Columns<T>,
 }
 
-impl<T: Typer> Dataset<T> {
+impl<T: Typer + Send + Sync> Dataset<T> {
     pub async fn read_file(
         file_path: impl AsRef<Path> + Clone,
         options: ReadingOptions,

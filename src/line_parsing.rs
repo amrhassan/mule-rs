@@ -71,7 +71,7 @@ impl<'a> LineParser<'a> {
         let quote_l = self.next_quote_ix().ok_or(())?;
         let mut quote_r = self.subsequent_qoute_ix(quote_l).ok_or(())?;
 
-        while &self.line[quote_r - self.options.text_quote_escape.len()..quote_r]
+        while self.line[quote_r - self.options.text_quote_escape.len()..quote_r]
             == self.options.text_quote_escape
         {
             quote_r = self.subsequent_qoute_ix(quote_r).ok_or(())?;
