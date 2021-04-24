@@ -1,7 +1,7 @@
 use crate::column_parsing::Columns;
+use crate::dataset_file::DatasetFile;
 use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
-use crate::file;
 use crate::header_parsing::Header;
 use crate::line_parsing::LineParsingOptions;
 use crate::schema::{Schema, SchemaInferenceDepth};
@@ -17,17 +17,19 @@ pub struct Dataset<T: Typer> {
     pub columns: Columns<T>,
 }
 
-impl<T: Typer> Dataset<T> {
+impl<T: Typer + Send + Sync> Dataset<T> {
     pub async fn read_file(
-        file_path: impl AsRef<Path> + Clone,
+        file_path: impl AsRef<Path>,
         options: ReadingOptions,
         typer: &T,
     ) -> Result<Dataset<T>> {
-        let line_count = file::count_lines(file_path.clone()).await?;
+        let file = DatasetFile::new(&file_path);
+
+        let line_count = file.count_lines().await?;
 
         let separator = match options.separator {
             Separator::Value(value) => value,
-            Separator::Infer => infer_separator(file_path.clone()).await?,
+            Separator::Infer => infer_separator(&file_path).await?,
         };
 
         let parsing_options = LineParsingOptions {
@@ -37,7 +39,7 @@ impl<T: Typer> Dataset<T> {
         };
 
         let header = if options.read_header {
-            Header::parse(file_path.clone(), &parsing_options).await?
+            Header::parse(&file_path, &parsing_options).await?
         } else {
             None
         };

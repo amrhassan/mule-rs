@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
 pub trait Typer: Default + Clone + 'static {
-    type ColumnType: Display + Hash + Eq + Copy + Debug + Default;
+    type ColumnType: Display + Hash + Eq + Copy + Debug + Send + Default;
     type DatasetValue: DatasetValue<Self::ColumnType>;
 
     const COLUMN_TYPES: &'static [Self::ColumnType];
