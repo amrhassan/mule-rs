@@ -1,13 +1,16 @@
-use crate::dataset_file::DatasetFile;
+use crate::dataset_file::{DatasetFile, LineBatch};
 use crate::errors::Result;
 use crate::line_parsing::{LineParser, LineParsingOptions};
 use crate::schema::Schema;
 use crate::value_parsing::Parsed;
 use crate::Typer;
+use rayon::current_num_threads;
+use rayon::prelude::*;
 use std::path::Path;
+use tokio::task;
 use tokio_stream::StreamExt;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Column<T: Typer> {
     pub values: Vec<Parsed<T::DatasetValue>>,
 }
@@ -18,9 +21,18 @@ impl<T: Typer> Column<T> {
             values: vec![Parsed::Missing; n],
         }
     }
+
+    fn merged_with(self, rhs: Self) -> Self {
+        let values = self
+            .values
+            .into_iter()
+            .chain(rhs.values.into_iter())
+            .collect();
+        Column { values }
+    }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Default)]
 pub struct Columns<T: Typer> {
     pub columns: Vec<Column<T>>,
 }
@@ -31,6 +43,16 @@ impl<T: Typer> Columns<T> {
             columns: vec![Column::new(rows); columns],
         }
     }
+
+    fn merged_with(self, rhs: Self) -> Self {
+        let columns = self
+            .columns
+            .into_iter()
+            .zip(rhs.columns.into_iter())
+            .map(|(lhs, rhs)| lhs.merged_with(rhs))
+            .collect();
+        Columns { columns }
+    }
 }
 
 impl<T: Typer> Columns<T> {
@@ -38,33 +60,91 @@ impl<T: Typer> Columns<T> {
         file_path: impl AsRef<Path>,
         schema: &Schema<T>,
         parsing_options: &LineParsingOptions,
-        line_count: usize,
         skip_first_line: bool,
         typer: &T,
     ) -> Result<Columns<T>> {
-        let lines_to_skip = if skip_first_line { 1 } else { 0 };
+        let dataset_file = DatasetFile::new(file_path);
+        let batch_count = current_num_threads();
+        let lines_to_read = dataset_file.count_lines().await?;
+        let line_batches = dataset_file.batches(skip_first_line, lines_to_read, batch_count);
 
-        let mut columns: Columns<T> =
-            Columns::new(schema.column_types.len(), line_count - lines_to_skip);
+        let owned_parsing_options = parsing_options.clone();
+        let owned_typer = typer.clone();
+        let owned_schema = schema.clone();
+        let batch_columns: Vec<Result<Columns<T>>> = task::spawn_blocking(move || {
+            parse_batches_blocking(
+                line_batches,
+                owned_schema,
+                owned_parsing_options,
+                owned_typer,
+            )
+        })
+        .await
+        .expect("Failed to join a blocking thread");
 
-        let file = DatasetFile::new(&file_path);
-        let mut lines = file.read_lines().await?.skip(lines_to_skip);
-        let mut row_ix = 0;
-
-        while let Some(line_res) = lines.next().await {
-            let line = line_res?;
-            let line_values = LineParser::new(line, parsing_options);
-            for (col_ix, (value, column_type)) in
-                line_values.zip(schema.column_types.iter()).enumerate()
-            {
-                let column_value = typer.parse_as(&value, *column_type);
-                columns.columns[col_ix].values[row_ix] = column_value;
-            }
-            row_ix += 1;
+        let mut columns = Columns::default();
+        for one_batch_columns in batch_columns.into_iter() {
+            columns = columns.merged_with(one_batch_columns?);
         }
 
         Ok(columns)
     }
+}
+
+fn parse_batches_blocking<T: Typer>(
+    line_batches: Vec<LineBatch>,
+    schema: Schema<T>,
+    parsing_options: LineParsingOptions,
+    typer: T,
+) -> Vec<Result<Columns<T>>> {
+    line_batches
+        .into_par_iter()
+        .map(move |line_batch| {
+            parse_line_batch_blocking(
+                line_batch,
+                schema.clone(),
+                parsing_options.clone(),
+                typer.clone(),
+            )
+        })
+        .collect()
+}
+
+async fn parse_line_batch<T: Typer>(
+    line_batch: LineBatch,
+    schema: &Schema<T>,
+    parsing_options: &LineParsingOptions,
+    typer: &T,
+) -> Result<Columns<T>> {
+    let mut columns: Columns<T> =
+        Columns::new(schema.column_types.len(), line_batch.get_row_count());
+
+    let mut lines = line_batch.read_lines().await?;
+    let mut row_ix = 0;
+
+    while let Some(line_res) = lines.next().await {
+        let line = line_res?;
+        let line_values = LineParser::new(line, parsing_options);
+        for (col_ix, (value, column_type)) in
+            line_values.zip(schema.column_types.iter()).enumerate()
+        {
+            let column_value = typer.parse_as(&value, *column_type);
+            columns.columns[col_ix].values[row_ix] = column_value;
+        }
+        row_ix += 1;
+    }
+
+    Ok(columns)
+}
+
+#[tokio::main]
+async fn parse_line_batch_blocking<T: Typer>(
+    line_batch: LineBatch,
+    schema: Schema<T>,
+    parsing_options: LineParsingOptions,
+    typer: T,
+) -> Result<Columns<T>> {
+    Ok(parse_line_batch(line_batch, &schema, &parsing_options, &typer).await?)
 }
 
 #[cfg(test)]
@@ -97,13 +177,10 @@ mod tests {
             ],
         };
 
-        let line_count = 10;
-
         let columns = Columns::parse(
             "datasets/sales-10-weird-bad.csv",
             &schema,
             &parsing_options,
-            line_count,
             skip_first_line,
             &typer,
         )

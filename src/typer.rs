@@ -2,8 +2,8 @@ use crate::value_parsing::{Parsed, RawValue};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
-pub trait Typer: Default + Clone + 'static {
-    type ColumnType: Display + Hash + Eq + Copy + Debug + Send + Default;
+pub trait Typer: Default + Clone + Debug + Send + Sync + 'static {
+    type ColumnType: Display + Hash + Eq + Copy + Send + Sync + Debug + Default;
     type DatasetValue: DatasetValue<Self::ColumnType>;
 
     const COLUMN_TYPES: &'static [Self::ColumnType];
@@ -19,6 +19,6 @@ pub trait Typer: Default + Clone + 'static {
     }
 }
 
-pub trait DatasetValue<C>: Debug + Clone + PartialEq {
+pub trait DatasetValue<C>: Debug + Clone + PartialEq + Send + Sync {
     fn get_column_type(&self) -> C;
 }
