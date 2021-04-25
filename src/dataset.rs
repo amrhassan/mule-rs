@@ -1,5 +1,4 @@
 use crate::column_parsing::Columns;
-use crate::dataset_file::DatasetFile;
 use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
 use crate::header_parsing::Header;
@@ -23,10 +22,6 @@ impl<T: Typer + Send + Sync> Dataset<T> {
         options: ReadingOptions,
         typer: &T,
     ) -> Result<Dataset<T>> {
-        let file = DatasetFile::new(&file_path);
-
-        let line_count = file.count_lines().await?;
-
         let separator = match options.separator {
             Separator::Value(value) => value,
             Separator::Infer => infer_separator(&file_path).await?,
@@ -58,7 +53,6 @@ impl<T: Typer + Send + Sync> Dataset<T> {
             &file_path,
             &schema,
             &parsing_options,
-            line_count,
             skip_first_line,
             &typer,
         )

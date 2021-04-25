@@ -1,4 +1,4 @@
-use crate::dataset_file::DatasetFile;
+use crate::dataset_file::{DatasetFile, LinesToRead};
 use crate::errors::Result;
 use crate::line_parsing::{LineParser, LineParsingOptions};
 use crate::typer::{DatasetValue, Typer};
@@ -27,11 +27,8 @@ impl<T: Typer + Send + Sync> Schema<T> {
         typer: &T,
     ) -> Result<Schema<T>> {
         let lines_to_read = match inference_depth {
-            SchemaInferenceDepth::Lines(n) => *n,
-            SchemaInferenceDepth::Percentage(percentage) => {
-                let line_count = DatasetFile::new(&file_path).count_lines().await?;
-                ((*percentage).min(1.0) * (line_count as f64)).ceil() as usize
-            }
+            SchemaInferenceDepth::Lines(n) => LinesToRead::Absolute(*n),
+            SchemaInferenceDepth::Percentage(percentage) => LinesToRead::Percentage(*percentage),
         };
 
         let own_file_path = file_path.as_ref().to_owned();
@@ -69,13 +66,13 @@ impl<T: Typer + Send + Sync> Schema<T> {
 fn count_file_column_types_blocking<T: Typer + Send + Sync>(
     file_path: impl AsRef<Path> + Clone + Sized,
     skip_header: bool,
-    lines_to_read: usize,
+    lines_to_read: LinesToRead,
     parsing_options: &LineParsingOptions,
     typer: &T,
 ) -> Result<ColumnTypeCounts<T>> {
     let batch_count = current_num_threads();
     let dataset_file = DatasetFile::new(file_path);
-    let line_batches = dataset_file.batches(skip_header, lines_to_read, batch_count);
+    let line_batches = dataset_file.batches_blocking(skip_header, lines_to_read, batch_count)?;
 
     let batch_column_type_counts: Vec<Result<ColumnTypeCounts<T>>> = line_batches
         .into_par_iter()
