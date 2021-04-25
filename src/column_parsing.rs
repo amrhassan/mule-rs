@@ -1,9 +1,10 @@
-use crate::dataset_file::{DatasetFile, LineBatch};
+use crate::dataset_file::LinesToRead;
 use crate::errors::Result;
 use crate::line_parsing::{LineParser, LineParsingOptions};
 use crate::schema::Schema;
 use crate::value_parsing::Parsed;
 use crate::Typer;
+use crate::{dataset_batch::DatasetBatch, dataset_file::DatasetFile};
 use rayon::current_num_threads;
 use rayon::prelude::*;
 use std::path::Path;
@@ -67,8 +68,9 @@ impl<T: Typer> Columns<T> {
     ) -> Result<Columns<T>> {
         let dataset_file = DatasetFile::new(file_path);
         let batch_count = current_num_threads();
-        let lines_to_read = dataset_file.count_lines().await?;
-        let line_batches = dataset_file.batches(skip_first_line, lines_to_read, batch_count);
+        let line_batches = dataset_file
+            .batches(skip_first_line, LinesToRead::All, batch_count)
+            .await?;
 
         let owned_parsing_options = parsing_options.clone();
         let owned_typer = typer.clone();
@@ -94,7 +96,7 @@ impl<T: Typer> Columns<T> {
 }
 
 fn parse_batches_blocking<T: Typer>(
-    line_batches: Vec<LineBatch>,
+    line_batches: Vec<DatasetBatch>,
     schema: Schema<T>,
     parsing_options: LineParsingOptions,
     typer: T,
@@ -113,7 +115,7 @@ fn parse_batches_blocking<T: Typer>(
 }
 
 async fn parse_line_batch<T: Typer>(
-    line_batch: LineBatch,
+    line_batch: DatasetBatch,
     schema: &Schema<T>,
     parsing_options: &LineParsingOptions,
     typer: &T,
@@ -141,12 +143,12 @@ async fn parse_line_batch<T: Typer>(
 
 #[tokio::main]
 async fn parse_line_batch_blocking<T: Typer>(
-    line_batch: LineBatch,
+    line_batch: DatasetBatch,
     schema: Schema<T>,
     parsing_options: LineParsingOptions,
     typer: T,
 ) -> Result<Columns<T>> {
-    Ok(parse_line_batch(line_batch, &schema, &parsing_options, &typer).await?)
+    parse_line_batch(line_batch, &schema, &parsing_options, &typer).await
 }
 
 #[cfg(test)]

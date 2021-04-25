@@ -1,4 +1,4 @@
-use crate::errors::Result;
+use crate::{dataset_batch::DatasetBatch, errors::Result};
 use futures_core::stream::TryStream;
 use itertools::Itertools;
 use std::path::{Path, PathBuf};
@@ -44,69 +44,58 @@ impl DatasetFile {
     }
 
     /// Break the range of file content into batches
-    pub fn batches(
+    pub async fn batches(
         &self,
         skip_header: bool,
-        lines_to_read: usize,
+        lines_to_read: LinesToRead,
         batch_count: usize,
-    ) -> Vec<LineBatch> {
+    ) -> Result<Vec<DatasetBatch>> {
         let lines_to_skip = if skip_header { 1 } else { 0 };
-        let batch_size = lines_to_read / batch_count;
+
+        let line_count = match lines_to_read {
+            LinesToRead::All => self.count_lines().await?,
+            LinesToRead::Absolute(n) => n,
+            LinesToRead::Percentage(p) => (self.count_lines().await? as f64 * p).floor() as usize,
+        };
+
+        let batch_size = line_count / batch_count;
+
         let start = lines_to_skip;
-        let stop = lines_to_skip + lines_to_read;
+        let stop = line_count;
 
         if (stop - start) < 2 {
-            return vec![LineBatch {
-                file_path: self.path.clone(),
-                skip_lines: lines_to_skip,
-                take_lines: lines_to_read,
-            }];
+            return Ok(vec![DatasetBatch::new(&self.path, start..=stop)]);
         }
 
-        (start..stop)
+        let batches = (start..stop)
             .chunks(batch_size)
             .into_iter()
             .map(|mut chunk| {
-                let skip_lines = chunk.next().unwrap_or(0);
-                let take_lines = chunk.last().unwrap_or(1);
-                LineBatch {
-                    file_path: self.path.clone(),
-                    skip_lines,
-                    take_lines,
-                }
+                let start = chunk.next().unwrap_or(lines_to_skip);
+                let stop = chunk.last().unwrap_or(start);
+                DatasetBatch::new(&self.path, start..=stop)
             })
-            .collect()
-    }
-}
+            .collect();
 
-/// A batch of lines from a local file
-#[derive(Debug)]
-pub struct LineBatch {
-    file_path: PathBuf,
-    skip_lines: usize,
-    take_lines: usize,
-}
-
-impl LineBatch {
-    /// Read lines from this batch
-    pub async fn read_lines(&self) -> Result<impl TryStream<Item = Result<String>>> {
-        let s = DatasetFile::new(&self.file_path)
-            .read_lines()
-            .await?
-            .skip(self.skip_lines)
-            .take(self.take_lines);
-        Ok(s)
+        Ok(batches)
     }
 
+    /// Break the range of file content into batches
     #[tokio::main(flavor = "current_thread")]
-    pub async fn read_lines_blocking(self) -> Result<impl TryStream<Item = Result<String>>> {
-        let l = self.read_lines().await?;
-        Ok(l)
+    pub async fn batches_blocking(
+        &self,
+        skip_header: bool,
+        lines_to_read: LinesToRead,
+        batch_count: usize,
+    ) -> Result<Vec<DatasetBatch>> {
+        self.batches(skip_header, lines_to_read, batch_count).await
     }
+}
 
-    pub fn get_row_count(&self) -> usize {
-        self.take_lines
-    }
+pub enum LinesToRead {
+    All,
+    Absolute(usize),
+    Percentage(f64),
 }
 
 #[cfg(test)]
