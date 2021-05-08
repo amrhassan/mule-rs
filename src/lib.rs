@@ -9,6 +9,7 @@ mod default_typer;
 mod defaults;
 mod errors;
 mod header_parsing;
+mod lexer;
 mod line_parsing;
 mod schema;
 mod separator_inference;
