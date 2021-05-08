@@ -1,5 +1,5 @@
 # mule #
-Strong-headed (yet flexible) parser of columnar datasets from CSV, TSV or other delimiter-separated datasets
+Strong-headed (yet flexible) parser of columnar datasets from CSV, TSV and other delimiter-separated datasets
 
 [![Crates.io](https://img.shields.io/crates/v/mule)](https://crates.io/crates/mule)
 [![Documentation](https://docs.rs/mule/badge.svg)](https://docs.rs/mule)
