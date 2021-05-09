@@ -1,5 +1,5 @@
-#![deny(warnings)]
-#![deny(clippy::all)]
+// #![deny(warnings)]
+// #![deny(clippy::all)]
 
 mod column_parsing;
 mod dataset;
