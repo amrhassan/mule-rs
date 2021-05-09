@@ -5,7 +5,30 @@ use std::str::Utf8Error;
 use thiserror::Error;
 use tokio_util::codec::Decoder;
 
+#[derive(Clone, Debug)]
 pub struct Record(String);
+
+impl AsRef<str> for Record {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for Record {
+    fn from(s: &str) -> Self {
+        Record(s.to_string())
+    }
+}
+
+impl Record {
+    pub fn len(&self) -> usize {
+        self.as_ref().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.as_ref().is_empty()
+    }
+}
 
 #[derive(Display, Error, Debug)]
 pub enum RecordLexerError {
@@ -32,7 +55,7 @@ pub enum TextEncoding {
 }
 
 impl TextEncoding {
-    fn decode<'a>(self, bytes: &[u8]) -> Result<&str> {
+    fn decode(self, bytes: &[u8]) -> Result<&str> {
         match self {
             TextEncoding::Utf8 => Ok(std::str::from_utf8(bytes)?),
         }
@@ -114,7 +137,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_frames_records_with_quoted_newlines() -> Result<()> {
+    async fn test_frames_records_with_quoted_newrecords() -> Result<()> {
         let source = "name,age,gender\n\"name\n1\", 3, F \r\n \"name \r\n 2\",5,X\n".to_string();
         let decoder = RecordLexer::new(TextEncoding::Utf8);
 

@@ -1,16 +1,16 @@
-use crate::value_parsing::RawValue;
+use crate::{lexer::Record, value_parsing::RawValue};
 use derive_more::From;
 
 #[derive(Clone)]
-pub struct LineParsingOptions {
+pub struct RecordParsingOptions {
     pub separator: String,
     pub text_quote: String,
     pub text_quote_escape: String,
 }
 
-impl Default for LineParsingOptions {
+impl Default for RecordParsingOptions {
     fn default() -> Self {
-        LineParsingOptions {
+        RecordParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
@@ -18,30 +18,30 @@ impl Default for LineParsingOptions {
     }
 }
 
-/// An iterator over a line from a CSV file that yields [[RawValue]] instances.
-pub struct LineParser<'a> {
-    line: String,
-    options: &'a LineParsingOptions,
+/// An iterator over a record from a CSV file that yields [[RawValue]] instances.
+pub struct RecordParser<'a> {
+    record: Record,
+    options: &'a RecordParsingOptions,
     next_start: usize,
 }
 
-impl<'a> LineParser<'a> {
-    pub fn new(line: String, options: &'a LineParsingOptions) -> LineParser<'a> {
-        LineParser {
-            line,
+impl<'a> RecordParser<'a> {
+    pub fn new(record: Record, options: &'a RecordParsingOptions) -> RecordParser<'a> {
+        RecordParser {
+            record,
             options,
             next_start: 0,
         }
     }
 }
 
-impl<'a> LineParser<'a> {
+impl<'a> RecordParser<'a> {
     fn remaining(&self) -> &str {
         self.start_from(self.next_start)
     }
 
     fn start_from(&self, ix: usize) -> &str {
-        &self.line[ix..]
+        &self.record.as_ref()[ix..]
     }
 
     fn next_separator_ix(&self) -> Option<usize> {
@@ -63,7 +63,9 @@ impl<'a> LineParser<'a> {
     }
 
     fn parse_unquoted(&self) -> (UnquotedRawValue, usize) {
-        let end = self.next_separator_ix().unwrap_or_else(|| self.line.len());
+        let end = self
+            .next_separator_ix()
+            .unwrap_or_else(|| self.record.as_ref().len());
         let (raw, n) = self.parse_to(end);
         (raw.into(), n)
     }
@@ -72,7 +74,7 @@ impl<'a> LineParser<'a> {
         let quote_l = self.next_quote_ix().ok_or(())?;
         let mut quote_r = self.subsequent_qoute_ix(quote_l).ok_or(())?;
 
-        while self.line[quote_r - self.options.text_quote_escape.len()..quote_r]
+        while self.record.as_ref()[quote_r - self.options.text_quote_escape.len()..quote_r]
             == self.options.text_quote_escape
         {
             quote_r = self.subsequent_qoute_ix(quote_r).ok_or(())?;
@@ -85,15 +87,15 @@ impl<'a> LineParser<'a> {
     }
 
     fn parse_to(&self, end: usize) -> (&str, usize) {
-        let value = &self.line[self.next_start..end];
+        let value = &self.record.as_ref()[self.next_start..end];
         (value, end + self.options.separator.len())
     }
 }
 
-impl<'a> Iterator for LineParser<'a> {
+impl<'a> Iterator for RecordParser<'a> {
     type Item = RawValue; // New Strings have to be allocated because escape patterns need to be dropped
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next_start > self.line.len() || self.line.is_empty() {
+        if self.next_start > self.record.len() || self.record.is_empty() {
             return None;
         }
         let (value, next_start) = if self.next_separator_ix() < self.next_quote_ix() {
@@ -124,7 +126,7 @@ impl<'a> From<UnquotedRawValue<'a>> for RawValue {
 
 struct QuotedRawValue<'a> {
     raw: &'a str,
-    options: &'a LineParsingOptions,
+    options: &'a RecordParsingOptions,
 }
 
 impl<'a> From<QuotedRawValue<'a>> for RawValue {
@@ -142,7 +144,7 @@ impl<'a> From<QuotedRawValue<'a>> for RawValue {
 }
 
 impl<'a> QuotedRawValue<'a> {
-    fn new(raw: &'a str, options: &'a LineParsingOptions) -> QuotedRawValue<'a> {
+    fn new(raw: &'a str, options: &'a RecordParsingOptions) -> QuotedRawValue<'a> {
         QuotedRawValue { raw, options }
     }
 }
@@ -153,14 +155,14 @@ mod tests {
     use itertools::Itertools;
 
     #[test]
-    fn test_line_values_1() {
-        let line = "first, second,,three,4,,,".to_string();
-        let parsing_options = LineParsingOptions {
+    fn test_record_values_1() {
+        let record = "first, second,,three,4,,,".into();
+        let parsing_options = RecordParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let values: Vec<String> = LineParser::new(line, &&parsing_options)
+        let values: Vec<String> = RecordParser::new(record, &&parsing_options)
             .map_into()
             .collect();
 
@@ -171,14 +173,14 @@ mod tests {
     }
 
     #[test]
-    fn test_line_values_2() {
-        let line = "first, second,,three,4,,,five".to_string();
-        let parsing_options = LineParsingOptions {
+    fn test_record_values_2() {
+        let record = "first, second,,three,4,,,five".into();
+        let parsing_options = RecordParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let values: Vec<String> = LineParser::new(line, &&parsing_options)
+        let values: Vec<String> = RecordParser::new(record, &&parsing_options)
             .map_into()
             .collect();
 
@@ -189,14 +191,14 @@ mod tests {
     }
 
     #[test]
-    fn test_line_values_3() {
-        let line = "first,, second,,,,three,,4,,,,,,".to_string();
-        let parsing_options = LineParsingOptions {
+    fn test_record_values_3() {
+        let record = "first,, second,,,,three,,4,,,,,,".into();
+        let parsing_options = RecordParsingOptions {
             separator: ",,".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let values: Vec<String> = LineParser::new(line, &&parsing_options)
+        let values: Vec<String> = RecordParser::new(record, &&parsing_options)
             .map_into()
             .collect();
 
@@ -207,14 +209,14 @@ mod tests {
     }
 
     #[test]
-    fn test_line_values_4() {
-        let line = "first, second,,three,4,\"\",,five".to_string();
-        let parsing_options = LineParsingOptions {
+    fn test_record_values_4() {
+        let record = "first, second,,three,4,\"\",,five".into();
+        let parsing_options = RecordParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let values: Vec<String> = LineParser::new(line, &&parsing_options)
+        let values: Vec<String> = RecordParser::new(record, &&parsing_options)
             .map_into()
             .collect();
 
@@ -225,14 +227,16 @@ mod tests {
     }
 
     #[test]
-    fn test_line_values_5() {
-        let line = "first, \"second point five\",,three,4,\"\",,five".to_string();
-        let parsing_options = LineParsingOptions {
+    fn test_record_values_5() {
+        let record = "first, \"second point five\",,three,4,\"\",,five".into();
+        let parsing_options = RecordParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let values: Vec<String> = LineParser::new(line, &parsing_options).map_into().collect();
+        let values: Vec<String> = RecordParser::new(record, &parsing_options)
+            .map_into()
+            .collect();
 
         assert_eq!(
             values,
@@ -250,14 +254,16 @@ mod tests {
     }
 
     #[test]
-    fn test_line_values_6() {
-        let line = "first, \"second \\\" point five\",,three,4,\"\",,five".to_string();
-        let parsing_options = LineParsingOptions {
+    fn test_record_values_6() {
+        let record = "first, \"second \\\" point five\",,three,4,\"\",,five".into();
+        let parsing_options = RecordParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let values: Vec<String> = LineParser::new(line, &parsing_options).map_into().collect();
+        let values: Vec<String> = RecordParser::new(record, &parsing_options)
+            .map_into()
+            .collect();
 
         assert_eq!(
             values,
@@ -275,14 +281,16 @@ mod tests {
     }
 
     #[test]
-    fn test_line_values_7() {
-        let line = "first, \"second \\\" \\\" point five\",,three,4,\"\",,five".to_string();
-        let parsing_options = LineParsingOptions {
+    fn test_record_values_7() {
+        let record = "first, \"second \\\" \\\" point five\",,three,4,\"\",,five".into();
+        let parsing_options = RecordParsingOptions {
             separator: ",".to_string(),
             text_quote: "\"".to_string(),
             text_quote_escape: "\\".to_string(),
         };
-        let values: Vec<String> = LineParser::new(line, &parsing_options).map_into().collect();
+        let values: Vec<String> = RecordParser::new(record, &parsing_options)
+            .map_into()
+            .collect();
 
         assert_eq!(
             values,

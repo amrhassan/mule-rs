@@ -1,6 +1,6 @@
-use crate::dataset_file::LinesToRead;
+use crate::dataset_file::RecordsToRead;
 use crate::errors::Result;
-use crate::line_parsing::{LineParser, LineParsingOptions};
+use crate::record_parsing::{RecordParser, RecordParsingOptions};
 use crate::schema::Schema;
 use crate::value_parsing::Parsed;
 use crate::Typer;
@@ -62,14 +62,14 @@ impl<T: Typer> Columns<T> {
     pub async fn parse(
         file_path: impl AsRef<Path>,
         schema: &Schema<T>,
-        parsing_options: &LineParsingOptions,
-        skip_first_line: bool,
+        parsing_options: &RecordParsingOptions,
+        skip_first_record: bool,
         typer: &T,
     ) -> Result<Columns<T>> {
         let dataset_file = DatasetFile::new(file_path);
         let batch_count = current_num_threads();
-        let line_batches = dataset_file
-            .batches(skip_first_line, LinesToRead::All, batch_count)
+        let record_batches = dataset_file
+            .batches(skip_first_record, RecordsToRead::All, batch_count)
             .await?;
 
         let owned_parsing_options = parsing_options.clone();
@@ -77,7 +77,7 @@ impl<T: Typer> Columns<T> {
         let owned_schema = schema.clone();
         let batch_columns: Vec<Result<Columns<T>>> = task::spawn_blocking(move || {
             parse_batches_blocking(
-                line_batches,
+                record_batches,
                 owned_schema,
                 owned_parsing_options,
                 owned_typer,
@@ -96,16 +96,16 @@ impl<T: Typer> Columns<T> {
 }
 
 fn parse_batches_blocking<T: Typer>(
-    line_batches: Vec<DatasetBatch>,
+    record_batches: Vec<DatasetBatch>,
     schema: Schema<T>,
-    parsing_options: LineParsingOptions,
+    parsing_options: RecordParsingOptions,
     typer: T,
 ) -> Vec<Result<Columns<T>>> {
-    line_batches
+    record_batches
         .into_par_iter()
-        .map(move |line_batch| {
-            parse_line_batch_blocking(
-                line_batch,
+        .map(move |record_batch| {
+            parse_record_batch_blocking(
+                record_batch,
                 schema.clone(),
                 parsing_options.clone(),
                 typer.clone(),
@@ -114,23 +114,23 @@ fn parse_batches_blocking<T: Typer>(
         .collect()
 }
 
-async fn parse_line_batch<T: Typer>(
-    line_batch: DatasetBatch,
+async fn parse_record_batch<T: Typer>(
+    record_batch: DatasetBatch,
     schema: &Schema<T>,
-    parsing_options: &LineParsingOptions,
+    parsing_options: &RecordParsingOptions,
     typer: &T,
 ) -> Result<Columns<T>> {
     let mut columns: Columns<T> =
-        Columns::new(schema.column_types.len(), line_batch.get_row_count());
+        Columns::new(schema.column_types.len(), record_batch.get_row_count());
 
-    let mut lines = line_batch.read_lines().await?;
+    let mut records = record_batch.read_records().await?;
     let mut row_ix = 0;
 
-    while let Some(line_res) = lines.next().await {
-        let line = line_res?;
-        let line_values = LineParser::new(line, parsing_options);
+    while let Some(record_res) = records.next().await {
+        let record = record_res?;
+        let record_values = RecordParser::new(record, parsing_options);
         for (col_ix, (value, column_type)) in
-            line_values.zip(schema.column_types.iter()).enumerate()
+            record_values.zip(schema.column_types.iter()).enumerate()
         {
             let column_value = typer.parse_as(&value, *column_type);
             columns.columns[col_ix].values[row_ix] = column_value;
@@ -142,13 +142,13 @@ async fn parse_line_batch<T: Typer>(
 }
 
 #[tokio::main]
-async fn parse_line_batch_blocking<T: Typer>(
-    line_batch: DatasetBatch,
+async fn parse_record_batch_blocking<T: Typer>(
+    record_batch: DatasetBatch,
     schema: Schema<T>,
-    parsing_options: LineParsingOptions,
+    parsing_options: RecordParsingOptions,
     typer: T,
 ) -> Result<Columns<T>> {
-    parse_line_batch(line_batch, &schema, &parsing_options, &typer).await
+    parse_record_batch(record_batch, &schema, &parsing_options, &typer).await
 }
 
 #[cfg(test)]
@@ -160,8 +160,8 @@ mod tests {
     #[tokio::test]
     pub async fn test_parses_sales_10_weird() -> Result<()> {
         let typer = DefaultTyper::default();
-        let parsing_options = LineParsingOptions::default();
-        let skip_first_line = true;
+        let parsing_options = RecordParsingOptions::default();
+        let skip_first_record = true;
         let schema = Schema::<DefaultTyper> {
             column_types: vec![
                 ColumnType::Text,
@@ -185,7 +185,7 @@ mod tests {
             "datasets/sales-10-weird-bad.csv",
             &schema,
             &parsing_options,
-            skip_first_line,
+            skip_first_record,
             &typer,
         )
         .await?;
@@ -236,15 +236,15 @@ mod tests {
                 },
                 Column {
                     values: vec![
-                        Some(Text("Offline".to_string())),
-                        Some(Text("Online".to_string())),
-                        Some(Text("Offline".to_string())),
-                        Some(Text("Online".to_string())),
-                        Some(Text("Offline".to_string())),
-                        Some(Text("Online".to_string())),
-                        Some(Text("Offline".to_string())),
-                        Some(Text("Online".to_string())),
-                        Some(Text("Offline".to_string())),
+                        Some(Text("Offrecord".to_string())),
+                        Some(Text("Onrecord".to_string())),
+                        Some(Text("Offrecord".to_string())),
+                        Some(Text("Onrecord".to_string())),
+                        Some(Text("Offrecord".to_string())),
+                        Some(Text("Onrecord".to_string())),
+                        Some(Text("Offrecord".to_string())),
+                        Some(Text("Onrecord".to_string())),
+                        Some(Text("Offrecord".to_string())),
                     ],
                 },
                 Column {

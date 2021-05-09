@@ -10,11 +10,11 @@ static COMMON_SEPARATORS: [&str; 3] = [",", "\t", "|"];
 /// Infer the separator as the most commonly used separator in the file
 pub async fn infer_separator(path: impl AsRef<Path>) -> Result<String> {
     let mut counts: HashMap<&str, usize> = HashMap::default();
-    let mut lines = DatasetFile::new(path).read_lines().await?;
-    while let Some(line_res) = lines.next().await {
-        let line = line_res?;
+    let mut records = DatasetFile::new(path).read_records().await?;
+    while let Some(record_res) = records.next().await {
+        let record = record_res?;
         for sep in COMMON_SEPARATORS.iter() {
-            *counts.entry(sep).or_default() += line.clone().matches(sep).count();
+            *counts.entry(sep).or_default() += record.as_ref().matches(sep).count();
         }
     }
     let sep = counts

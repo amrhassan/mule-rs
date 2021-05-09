@@ -1,8 +1,11 @@
-use crate::dataset_file::{DatasetFile, LinesToRead};
 use crate::errors::Result;
-use crate::line_parsing::{LineParser, LineParsingOptions};
+use crate::record_parsing::{RecordParser, RecordParsingOptions};
 use crate::typer::{DatasetValue, Typer};
 use crate::value_parsing::Parsed;
+use crate::{
+    dataset_file::{DatasetFile, RecordsToRead},
+    lexer::Record,
+};
 use futures_core::TryStream;
 use itertools::Itertools;
 use maplit::hashmap;
@@ -23,12 +26,12 @@ impl<T: Typer + Send + Sync> Schema<T> {
         file_path: impl AsRef<Path>,
         skip_header: bool,
         inference_depth: &SchemaInferenceDepth,
-        parsing_options: &LineParsingOptions,
+        parsing_options: &RecordParsingOptions,
         typer: &T,
     ) -> Result<Schema<T>> {
-        let lines_to_read = match inference_depth {
-            SchemaInferenceDepth::Lines(n) => LinesToRead::Absolute(*n),
-            SchemaInferenceDepth::Percentage(percentage) => LinesToRead::Percentage(*percentage),
+        let records_to_read = match inference_depth {
+            SchemaInferenceDepth::Records(n) => RecordsToRead::Absolute(*n),
+            SchemaInferenceDepth::Percentage(percentage) => RecordsToRead::Percentage(*percentage),
         };
 
         let own_file_path = file_path.as_ref().to_owned();
@@ -38,7 +41,7 @@ impl<T: Typer + Send + Sync> Schema<T> {
             count_file_column_types_blocking(
                 own_file_path,
                 skip_header,
-                lines_to_read,
+                records_to_read,
                 &own_parsing_options,
                 &own_typer,
             )
@@ -66,18 +69,19 @@ impl<T: Typer + Send + Sync> Schema<T> {
 fn count_file_column_types_blocking<T: Typer + Send + Sync>(
     file_path: impl AsRef<Path> + Clone + Sized,
     skip_header: bool,
-    lines_to_read: LinesToRead,
-    parsing_options: &LineParsingOptions,
+    records_to_read: RecordsToRead,
+    parsing_options: &RecordParsingOptions,
     typer: &T,
 ) -> Result<ColumnTypeCounts<T>> {
     let batch_count = current_num_threads();
     let dataset_file = DatasetFile::new(file_path);
-    let line_batches = dataset_file.batches_blocking(skip_header, lines_to_read, batch_count)?;
+    let record_batches =
+        dataset_file.batches_blocking(skip_header, records_to_read, batch_count)?;
 
-    let batch_column_type_counts: Vec<Result<ColumnTypeCounts<T>>> = line_batches
+    let batch_column_type_counts: Vec<Result<ColumnTypeCounts<T>>> = record_batches
         .into_par_iter()
-        .map(|batch| match batch.read_lines_blocking() {
-            Ok(lines) => count_column_types(lines, typer, parsing_options),
+        .map(|batch| match batch.read_records_blocking() {
+            Ok(records) => count_column_types(records, typer, parsing_options),
             Err(err) => Err(err),
         })
         .collect();
@@ -92,14 +96,14 @@ fn count_file_column_types_blocking<T: Typer + Send + Sync>(
 
 #[tokio::main(flavor = "current_thread")]
 async fn count_column_types<T: Typer>(
-    mut lines: impl TryStream<Item = Result<String>> + Unpin,
+    mut records: impl TryStream<Item = Result<Record>> + Unpin,
     typer: &T,
-    parsing_options: &LineParsingOptions,
+    parsing_options: &RecordParsingOptions,
 ) -> Result<ColumnTypeCounts<T>> {
     let mut column_type_counts: Vec<HashMap<T::ColumnType, usize>> = Vec::new();
-    while let Some(line_res) = lines.next().await {
-        let line_values = LineParser::new(line_res?, &parsing_options);
-        for (ix, val) in line_values.enumerate() {
+    while let Some(record_res) = records.next().await {
+        let record_values = RecordParser::new(record_res?, &parsing_options);
+        for (ix, val) in record_values.enumerate() {
             if let Parsed::Some(parsed) = typer.parse(&val) {
                 let column_type = parsed.get_column_type();
                 match column_type_counts.get_mut(ix) {
@@ -133,13 +137,13 @@ impl<T: Typer> ColumnTypeCounts<T> {
     }
 }
 
-/// Number of lines to read while inferring the dataset schema
+/// Number of records to read while inferring the dataset schema
 #[derive(Copy, Clone, Debug)]
 pub enum SchemaInferenceDepth {
-    /// Percentage of total number of lines
+    /// Percentage of total number of records
     Percentage(f64),
-    /// Absolute number of lines
-    Lines(usize),
+    /// Absolute number of records
+    Records(usize),
 }
 
 impl Default for SchemaInferenceDepth {
@@ -156,12 +160,12 @@ mod test {
     #[tokio::test]
     pub async fn test_infer_schema_sales_100() -> Result<()> {
         let typer = DefaultTyper::default();
-        let parsing_options = LineParsingOptions::default();
+        let parsing_options = RecordParsingOptions::default();
         let schema_inference_depth = SchemaInferenceDepth::default();
-        let skip_first_line = true;
+        let skip_first_record = true;
         let schema = Schema::infer(
             "datasets/sales-100.csv",
-            skip_first_line,
+            skip_first_record,
             &schema_inference_depth,
             &parsing_options,
             &typer,

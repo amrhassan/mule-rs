@@ -2,7 +2,7 @@ use crate::column_parsing::Columns;
 use crate::default_typer::DefaultTyper;
 use crate::errors::Result;
 use crate::header_parsing::Header;
-use crate::line_parsing::LineParsingOptions;
+use crate::record_parsing::RecordParsingOptions;
 use crate::schema::{Schema, SchemaInferenceDepth};
 use crate::separator_inference::infer_separator;
 use crate::typer::Typer;
@@ -27,7 +27,7 @@ impl<T: Typer + Send + Sync> Dataset<T> {
             Separator::Infer => infer_separator(&file_path).await?,
         };
 
-        let parsing_options = LineParsingOptions {
+        let parsing_options = RecordParsingOptions {
             text_quote: options.text_quote,
             text_quote_escape: options.text_quote_escape,
             separator,
@@ -39,10 +39,10 @@ impl<T: Typer + Send + Sync> Dataset<T> {
             None
         };
 
-        let skip_first_line = options.read_header;
+        let skip_first_record = options.read_header;
         let schema = Schema::infer(
             &file_path,
-            skip_first_line,
+            skip_first_record,
             &options.schema_inference_depth,
             &parsing_options,
             typer,
@@ -53,7 +53,7 @@ impl<T: Typer + Send + Sync> Dataset<T> {
             &file_path,
             &schema,
             &parsing_options,
-            skip_first_line,
+            skip_first_record,
             &typer,
         )
         .await?;

@@ -1,6 +1,6 @@
 use crate::dataset_file::DatasetFile;
 use crate::errors::Result;
-use crate::line_parsing::{LineParser, LineParsingOptions};
+use crate::record_parsing::{RecordParser, RecordParsingOptions};
 use itertools::Itertools;
 use std::path::Path;
 use tokio_stream::StreamExt;
@@ -13,15 +13,15 @@ pub struct Header {
 impl Header {
     pub async fn parse(
         path: impl AsRef<Path>,
-        options: &LineParsingOptions,
+        options: &RecordParsingOptions,
     ) -> Result<Option<Header>> {
         let header = DatasetFile::new(path)
-            .read_lines()
+            .read_records()
             .await?
             .try_next()
             .await?
-            .map(|line| {
-                let names = LineParser::new(line, options);
+            .map(|record| {
+                let names = RecordParser::new(record, options);
                 names.map_into().collect_vec()
             })
             .map(|column_names| Header { column_names });
@@ -35,7 +35,7 @@ mod test {
 
     #[tokio::test]
     pub async fn test_read_header_sales_100() -> Result<()> {
-        let options = LineParsingOptions::default();
+        let options = RecordParsingOptions::default();
         let header = Header::parse("datasets/sales-100.csv", &options).await?;
 
         let expected = Some(Header {
