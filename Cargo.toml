@@ -13,10 +13,10 @@ keywords = ["csv", "tsv", "dataset", "columnar"]
 all-features = true
 
 [dev-dependencies]
-tokio = { version = "1.4.0", features = ["fs", "io-util", "rt-multi-thread", "macros"] }
+tokio = { version = "1.5.0", features = ["fs", "io-util", "rt-multi-thread", "macros"] }
 
 [dependencies]
-tokio = { version = "1.4.0", features = ["fs", "io-util"] }
+tokio = { version = "1.5.0", features = ["fs", "io-util"] }
 tokio-stream = { version = "0.1", features = ["io-util"] }
 futures-core = "0.3"
 thiserror = "1"
@@ -24,3 +24,7 @@ derive_more = "0"
 itertools = "0.10"
 maplit = "1"
 rayon = "1.5.0"
+utf8-chars = "1.0.2"
+tokio-util = { version = "0.6.6", features = ["codec"] }
+bytes = "1.0.1"
+

@@ -1,11 +1,15 @@
-use crate::{dataset_batch::DatasetBatch, errors::Result};
+use crate::{
+    dataset_batch::DatasetBatch,
+    errors::Result,
+    lexer::{Record, RecordLexer},
+};
 use futures_core::stream::TryStream;
 use itertools::Itertools;
 use std::path::{Path, PathBuf};
 use tokio::fs::File;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio_stream::wrappers::LinesStream;
+use tokio::io::BufReader;
 use tokio_stream::StreamExt;
+use tokio_util::codec::FramedRead;
 
 #[derive(Clone)]
 pub struct DatasetFile {
@@ -19,49 +23,52 @@ impl DatasetFile {
         }
     }
 
-    /// Open and count the lines in a file
-    pub async fn count_lines(&self) -> Result<usize> {
-        let lines = self.read_lines().await?;
-        let count = lines.fold(0, |acc, _| acc + 1).await;
+    /// Open and count the records in a file
+    pub async fn count_records(&self) -> Result<usize> {
+        let records = self.read_records().await?;
+        let count = records.fold(0, |acc, _| acc + 1).await;
         Ok(count)
     }
 
     #[tokio::main(flavor = "current_thread")]
-    pub async fn count_lines_blocking(&self) -> Result<usize> {
-        self.count_lines().await
+    pub async fn count_records_blocking(&self) -> Result<usize> {
+        self.count_records().await
     }
 
-    pub async fn read_lines(&self) -> Result<impl TryStream<Item = Result<String>>> {
+    pub async fn read_records(&self) -> Result<impl TryStream<Item = Result<Record>>> {
         let reader = File::open(&self.path).await?;
         let buff = BufReader::new(reader);
-        let stream = LinesStream::new(buff.lines());
+        let record_decoder = RecordLexer::new(crate::lexer::TextEncoding::Utf8);
+        let stream = FramedRead::new(buff, record_decoder);
         Ok(stream.map(|res| Ok(res?)))
     }
 
     #[tokio::main(flavor = "current_thread")]
-    pub async fn read_lines_blocking(&self) -> Result<impl TryStream<Item = Result<String>>> {
-        self.read_lines().await
+    pub async fn read_records_blocking(&self) -> Result<impl TryStream<Item = Result<Record>>> {
+        self.read_records().await
     }
 
     /// Break the range of file content into batches
     pub async fn batches(
         &self,
         skip_header: bool,
-        lines_to_read: LinesToRead,
+        records_to_read: RecordsToRead,
         batch_count: usize,
     ) -> Result<Vec<DatasetBatch>> {
-        let lines_to_skip = if skip_header { 1 } else { 0 };
+        let records_to_skip = if skip_header { 1 } else { 0 };
 
-        let line_count = match lines_to_read {
-            LinesToRead::All => self.count_lines().await?,
-            LinesToRead::Absolute(n) => n,
-            LinesToRead::Percentage(p) => (self.count_lines().await? as f64 * p).floor() as usize,
+        let record_count = match records_to_read {
+            RecordsToRead::All => self.count_records().await?,
+            RecordsToRead::Absolute(n) => n,
+            RecordsToRead::Percentage(p) => {
+                (self.count_records().await? as f64 * p).floor() as usize
+            }
         };
 
-        let batch_size = line_count / batch_count;
+        let batch_size = record_count / batch_count;
 
-        let start = lines_to_skip;
-        let stop = line_count;
+        let start = records_to_skip;
+        let stop = record_count;
 
         if (stop - start) < 2 {
             return Ok(vec![DatasetBatch::new(&self.path, start..=stop)]);
@@ -71,7 +78,7 @@ impl DatasetFile {
             .chunks(batch_size)
             .into_iter()
             .map(|mut chunk| {
-                let start = chunk.next().unwrap_or(lines_to_skip);
+                let start = chunk.next().unwrap_or(records_to_skip);
                 let stop = chunk.last().unwrap_or(start);
                 DatasetBatch::new(&self.path, start..=stop)
             })
@@ -85,14 +92,15 @@ impl DatasetFile {
     pub async fn batches_blocking(
         &self,
         skip_header: bool,
-        lines_to_read: LinesToRead,
+        records_to_read: RecordsToRead,
         batch_count: usize,
     ) -> Result<Vec<DatasetBatch>> {
-        self.batches(skip_header, lines_to_read, batch_count).await
+        self.batches(skip_header, records_to_read, batch_count)
+            .await
     }
 }
 
-pub enum LinesToRead {
+pub enum RecordsToRead {
     All,
     Absolute(usize),
     Percentage(f64),
@@ -103,16 +111,16 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_count_lines() -> Result<()> {
+    async fn test_count_records() -> Result<()> {
         assert_eq!(
             DatasetFile::new("datasets/sales-10.csv")
-                .count_lines()
+                .count_records()
                 .await?,
             10
         );
         assert_eq!(
             DatasetFile::new("datasets/sales-100.tsv")
-                .count_lines()
+                .count_records()
                 .await?,
             100
         );

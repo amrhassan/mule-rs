@@ -1,13 +1,13 @@
 use std::env;
 
-use mule::{DefaultTyper, LineParsingOptions, Result, Schema, SchemaInferenceDepth};
+use mule::{DefaultTyper, RecordParsingOptions, Result, Schema, SchemaInferenceDepth};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
     let file_path = env::args().skip(1).next().expect("Missing argument");
     let skip_header = true;
     let inference_depth = SchemaInferenceDepth::Percentage(1.0);
-    let parsing_options = LineParsingOptions::default();
+    let parsing_options = RecordParsingOptions::default();
     let typer = DefaultTyper;
     let schema = Schema::infer(
         file_path,
